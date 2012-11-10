@@ -9,6 +9,8 @@ palettes = []
 cur_pal_idx = -1
 c_api = None
 
+PLAYA1 = None
+
 
 def init():
     global palettes
@@ -16,6 +18,8 @@ def init():
 
     c_api = ctypes.cdll.LoadLibrary(RENDER_SO)
     print "loaded %s" % RENDER_SO
+
+    c_api.setup(hvars.screen, hvars.WIDTH, hvars.HEIGHT, hvars.WIDTH)
 
     raw = hvars.iwad.readLump("PLAYPAL")
     idx = 0
@@ -32,7 +36,13 @@ def init():
 
 
 def refresh():
-    c_api.drawPalette(hvars.screen, hvars.WIDTH, hvars.HEIGHT, hvars.WIDTH)
+    global PLAYA1
+
+    if not PLAYA1:
+        PLAYA1 = hvars.iwad.readLump("PLAYA1")
+
+    c_api.drawPalette()
+    c_api.drawSprite(PLAYA1, 200, 50)
 
     io.swapBuffer()
 
