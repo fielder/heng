@@ -3,18 +3,13 @@ import ctypes
 import hvars
 import cdefs
 import io
+import r_camera
 
 RENDER_SO = "./render.so"
 
 palettes = []
 cur_pal_idx = -1
 c_api = None
-
-
-class Camera(object):
-    fov_x = 90.0
-    pos = (0.0, 0.0, 0.0)
-    angles = (0.0, 0.0, 0.0)
 
 
 def init():
@@ -39,26 +34,18 @@ def init():
 
     setPalette(0)
 
-    hvars.camera = Camera()
+    r_camera.init()
 
-
-PLAYA1 = None
 
 def refresh():
     # 2D drawing
-    global PLAYA1
-
-    if not PLAYA1:
-        PLAYA1 = hvars.iwad.readLump("PLAYA1")
-
-    c_api.drawPalette()
-    c_api.drawSprite(PLAYA1, 200, 50)
+    #TODO: ...
 
     # 3D drawing
     c_api.setCamera(ctypes.c_float(hvars.camera.fov_x),
                     cdefs.Vec3(*hvars.camera.pos),
                     cdefs.Vec3(*hvars.camera.angles))
-    #...
+#   c_api.drawWorld( ... )
 
 
 def setPalette(palidx):
