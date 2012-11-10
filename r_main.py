@@ -1,6 +1,7 @@
 import ctypes
 
 import hvars
+import cdefs
 import io
 
 RENDER_SO = "./render.so"
@@ -9,7 +10,11 @@ palettes = []
 cur_pal_idx = -1
 c_api = None
 
-PLAYA1 = None
+
+class Camera(object):
+    fov_x = 90.0
+    pos = (0.0, 0.0, 0.0)
+    angles = (0.0, 0.0, 0.0)
 
 
 def init():
@@ -17,7 +22,7 @@ def init():
     global c_api
 
     c_api = ctypes.cdll.LoadLibrary(RENDER_SO)
-    print "loaded %s" % RENDER_SO
+    print "Loaded %s" % RENDER_SO
 
     c_api.setup(hvars.screen, hvars.WIDTH, hvars.HEIGHT, hvars.WIDTH)
 
@@ -30,12 +35,17 @@ def init():
             idx += 3
             pal.append((ord(rgb[0]), ord(rgb[1]), ord(rgb[2])))
         palettes.append(pal)
-    print "read %d palettes" % len(palettes)
+    print "Read %d palettes" % len(palettes)
 
     setPalette(0)
 
+    hvars.camera = Camera()
+
+
+PLAYA1 = None
 
 def refresh():
+    # 2D drawing
     global PLAYA1
 
     if not PLAYA1:
@@ -44,7 +54,11 @@ def refresh():
     c_api.drawPalette()
     c_api.drawSprite(PLAYA1, 200, 50)
 
-    io.swapBuffer()
+    # 3D drawing
+    c_api.setCamera(ctypes.c_float(hvars.camera.fov_x),
+                    cdefs.Vec3(*hvars.camera.pos),
+                    cdefs.Vec3(*hvars.camera.angles))
+    #...
 
 
 def setPalette(palidx):

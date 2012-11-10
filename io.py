@@ -22,13 +22,13 @@ def init():
     surf = pygame.display.set_mode((w, h), 0, 8)
 
     hvars.screen = ctypes.create_string_buffer("\x00" * (w * h), w * h)
-    print "allocated %dx%d screen" % (w, h)
+    print "Allocated %dx%d screen" % (w, h)
 
     if surf.get_pitch() != w:
         row_buffers = []
         for y in xrange(h):
             row_buffers.append(buffer(hvars.screen, y * w, w))
-        print "using row buffers for %d-pitch screen" % surf.get_pitch()
+        print "Using row buffers for %d-pitch screen" % surf.get_pitch()
 
 
 def shutdown():

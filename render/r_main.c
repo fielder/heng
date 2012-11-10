@@ -1,6 +1,8 @@
 #include <stdint.h>
+#include <math.h>
 
 #include "r_defs.h"
+#include "vec.h"
 
 struct r_buf_s r_buf;
 struct r_view_s r_view;
@@ -17,9 +19,17 @@ setup (uint8_t *buf, int w, int h, int pitch)
 
 
 void
-setupView (void)
+setCamera (float fov_x, float pos[3], float angles[3])
 {
-	//...
+	r_view.center_x = r_buf.w / 2.0 - 0.5;
+	r_view.center_y = r_buf.h / 2.0 - 0.5;
+
+	r_view.fov_x = fov_x;
+	r_view.dist = (r_buf.w / 2.0) / tan(r_view.fov_x / 2.0);
+	r_view.fov_y = 2.0 * atan((r_buf.h / 2.0) / r_view.dist);
+
+	Vec_Copy (pos, r_view.pos);
+	Vec_Copy (angles, r_view.angles);
 }
 
 

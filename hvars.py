@@ -9,3 +9,5 @@ fps_rate = 0.0
 
 iwad = None
 hwa = None
+
+camera = None
