@@ -15,7 +15,17 @@ def _showFPS():
     print "%g fps" % hvars.fps_rate
 
 def _mouseMove(delt):
-    print delt
+    hvars.camera.rotatePixels(delt[0], delt[1])
+
+def _debug():
+    print hvars.camera.w
+    print hvars.camera.h
+    print hvars.camera.dist
+    print hvars.camera.fov_x
+    print hvars.camera.fov_y
+    print hvars.camera.pos
+    print hvars.camera.angles
+    pass
 
 
 if __name__ == "__main__":
@@ -33,6 +43,7 @@ if __name__ == "__main__":
     io.bind("f", _showFPS)
     io.bind("mousemove", _mouseMove)
     io.bind("g", io.toggleGrab)
+    io.bind("x", _debug)
 
     while not hvars.do_quit:
         io.runInput()
