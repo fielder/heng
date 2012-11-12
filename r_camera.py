@@ -22,6 +22,13 @@ class Camera(object):
 
         #TODO: ...
 
+    def rotate(self, roll, pitch, yaw):
+        pass
+
+    def thrust(self, forward, right, up):
+        #TODO: ...
+        pass
+
 
 def init():
     hvars.camera = Camera()

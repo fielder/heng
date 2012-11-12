@@ -1,3 +1,4 @@
+import types
 import ctypes
 
 import pygame
@@ -32,6 +33,7 @@ def init():
 
 
 def shutdown():
+    pygame.event.set_grab(False)
     pygame.quit()
 
 
@@ -65,3 +67,51 @@ def swapBuffer():
 
 def setPalette(pal):
     pygame.display.set_palette(pal)
+
+########################################################################
+
+_key_names = {} # name -> int
+_binds = {} # int/str -> func
+
+for item_name in dir(pygame):
+    if item_name.startswith("K_"):
+        _key_names[item_name[2:].lower()] = getattr(pygame, item_name)
+del(_key_names["last"]) # not a real key
+
+
+def toggleGrab():
+    pygame.event.set_grab(not pygame.event.get_grab())
+
+
+def bind(obj, func):
+    if type(obj) == types.StringType:
+        if obj.startswith("button"):
+            pass
+        elif obj == "mousemove":
+            pass
+        else:
+            if obj not in _key_names:
+                raise Exception("unknown key \"%s\"" % obj)
+            obj = _key_names[obj]
+    elif type(obj) != types.IntType:
+        raise Exception("invalid bindable \"%s\"" % str(obj))
+    _binds[obj] = func
+
+
+def runInput():
+    for ev in pygame.event.get():
+        if ev.type == pygame.QUIT:
+            hvars.do_quit = 1
+        elif ev.type == pygame.KEYDOWN:
+            if ev.key in _binds:
+                _binds[ev.key]()
+        elif ev.type == pygame.MOUSEBUTTONDOWN:
+            b = "button%d" % ev.button
+            if b in _binds:
+                _binds[b]()
+        elif ev.type == pygame.MOUSEMOTION:
+            if pygame.event.get_grab():
+                if "mousemove" in _binds:
+                    _binds["mousemove"](pygame.mouse.get_rel())
+        else:
+            pass

@@ -30,6 +30,10 @@ setCamera (float fov_x, float pos[3], float angles[3])
 
 	Vec_Copy (pos, r_view.pos);
 	Vec_Copy (angles, r_view.angles);
+
+	//TODO: view vecs
+	//TODO: xform
+	//TODO: view planes
 }
 
 
