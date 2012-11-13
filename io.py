@@ -59,7 +59,7 @@ def swapBuffer():
 
     # calc framerate
     hvars.fps_framecount += 1
-    now = pygame.time.get_ticks()
+    now = milliSeconds()
     if (now - hvars.fps_last_start) > 250:
         hvars.fps_rate = hvars.fps_framecount / ((now - hvars.fps_last_start) / 1000.0)
         hvars.fps_last_start = now
@@ -68,6 +68,10 @@ def swapBuffer():
 
 def setPalette(pal):
     pygame.display.set_palette(pal)
+
+
+def milliSeconds():
+    return pygame.time.get_ticks()
 
 ########################################################################
 
@@ -88,7 +92,8 @@ def toggleGrab():
 
 def bind(obj, func):
     """
-    Caller can give an SDL key integer or a key name string.
+    Caller can give an SDL key integer, a key name string, a button in
+    the format "buttonX", or "mousemove".
     """
 
     if type(obj) == types.StringType:
@@ -102,6 +107,7 @@ def bind(obj, func):
             obj = _key_names[obj]
     elif type(obj) != types.IntType:
         raise Exception("invalid bindable \"%s\"" % str(obj))
+
     _binds[obj] = func
 
 

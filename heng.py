@@ -17,6 +17,22 @@ def _showFPS():
 def _mouseMove(delt):
     hvars.camera.rotatePixels(delt[0], delt[1])
 
+def _moveForward():
+    #TODO: ...
+    pass
+
+def _moveRight():
+    #TODO: ...
+    pass
+
+def _moveBack():
+    #TODO: ...
+    pass
+
+def _moveLeft():
+    #TODO: ...
+    pass
+
 def _debug():
     print hvars.camera.w
     print hvars.camera.h
@@ -25,6 +41,10 @@ def _debug():
     print hvars.camera.fov_y
     print hvars.camera.pos
     print hvars.camera.angles
+    hvars.camera.findViewVectors()
+    print hvars.camera.right
+    print hvars.camera.up
+    print hvars.camera.forward
     pass
 
 
@@ -44,10 +64,21 @@ if __name__ == "__main__":
     io.bind("mousemove", _mouseMove)
     io.bind("g", io.toggleGrab)
     io.bind("x", _debug)
+    io.bind("period", _moveForward)
+    io.bind("u", _moveRight)
+    io.bind("e", _moveBack)
+    io.bind("o", _moveLeft)
 
+    frame_start = io.milliSeconds()
     while not hvars.do_quit:
         io.runInput()
         r_main.refresh()
         io.swapBuffer()
+
+        now = io.milliSeconds()
+        hvars.frametime = (now - frame_start) / 1000.0
+        if hvars.frametime == 0.0:
+            hvars.frametime = 0.001
+        frame_start = now
 
     io.shutdown()

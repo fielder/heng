@@ -39,41 +39,59 @@ class Camera(object):
     fov_y = property(_fov_y)
 
     def restrictAngles(self):
-        p, y, r = self.angles
+        pitch, yaw, roll = self.angles
 
-        if p > math.pi / 2.0:
-            p = math.pi / 2.0
-        if p < -math.pi / 2.0:
-            p = -math.pi / 2.0
+        if pitch > math.pi / 2.0:
+            pitch = math.pi / 2.0
+        if pitch < -math.pi / 2.0:
+            pitch = -math.pi / 2.0
 
-        while y >= math.pi * 2.0:
-            y -= math.pi * 2.0
-        while y < 0.0:
-            y += math.pi * 2.0
+        while roll >= math.pi * 2.0:
+            roll -= math.pi * 2.0
+        while roll < 0.0:
+            roll += math.pi * 2.0
 
-        self.angles = (p, y, r)
+        while yaw >= math.pi * 2.0:
+            yaw -= math.pi * 2.0
+        while yaw < 0.0:
+            yaw += math.pi * 2.0
 
-    def findAxis(self):
+        self.angles = (pitch, yaw, roll)
+
+    def findViewVectors(self):
         """
         Set up the right, up, forward vectors.
         """
 
-        #TODO: ...
+        xform = vec.anglesMatrix(vec.vecScale(self.angles, -1.0), "xyz")
+
+        self.right = xform[0]
+        self.up = xform[1]
+        self.forward = xform[2]
+
+        # We're looking down the -z axis, and our projection calculation
+        # assumes greater z is further away. So negate z values making
+        # positive z objects behind the camera.
+        self.forward = vec.vecScale(self.forward, -1.0)
 
     def rotate(self, angles):
         self.angles = vec.vecAdd(self.angles, angles)
         self.restrictAngles()
 
     def rotatePixels(self, dx, dy):
-        p = -self.fov_y * (dy / self.h)
-        y = -self.fov_x * (dx / self.w)
-        r = 0.0
-        self.rotate((p, y, r))
-        self.restrictAngles()
+        """
+        Rotate the camera based on pixels, in screen coordinates. Used
+        by the mouse to control the camera.
+        """
 
-    def thrust(self, forward, right, up):
-        #TODO: ...
-        pass
+        pitch = self.fov_y * (-dy / self.h)
+        yaw = self.fov_x * (-dx / self.w)
+        roll = 0.0
+
+        self.rotate((pitch, yaw, roll))
+
+    def thrust(self, v):
+        self.pos = vec.vecAdd(self.pos, v)
 
 
 def init():
