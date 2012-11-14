@@ -7,20 +7,20 @@
 
 static void
 initCamera (float);
+
 static void
 cameraChanged (void);
 
-struct r_buf_s r_buf;
-struct r_camera_s r_cam;
+struct r_defs_s r_defs;
 
 
 void
 setup (uint8_t *buf, int w, int h, int pitch, float fov_x)
 {
-	r_buf.screen = buf;
-	r_buf.w = w;
-	r_buf.h = h;
-	r_buf.pitch = pitch;
+	r_defs.screen = buf;
+	r_defs.w = w;
+	r_defs.h = h;
+	r_defs.pitch = pitch;
 
 	initCamera (fov_x);
 }
@@ -31,10 +31,10 @@ drawPalette (void)
 {
 	int x, y;
 
-	for (y = 0; y < 128 && y < r_buf.h; y++)
+	for (y = 0; y < 128 && y < r_defs.h; y++)
 	{
-		uint8_t *dest = r_buf.screen + y * r_buf.pitch;
-		for (x = 0; x < 128 && x < r_buf.w; x++)
+		uint8_t *dest = r_defs.screen + y * r_defs.pitch;
+		for (x = 0; x < 128 && x < r_defs.w; x++)
 			*dest++ = ((y << 1) & 0xf0) + (x >> 3);
 	}
 }
@@ -43,17 +43,17 @@ drawPalette (void)
 static void
 initCamera (float fov_x)
 {
-	r_cam.center_x = r_buf.w / 2.0 - 0.5;
-	r_cam.center_y = r_buf.h / 2.0 - 0.5;
+	r_defs.center_x = r_defs.w / 2.0 - 0.5;
+	r_defs.center_y = r_defs.h / 2.0 - 0.5;
 
-	r_cam.fov_x = fov_x;
-	r_cam.dist = (r_buf.w / 2.0) / tan(r_cam.fov_x / 2.0);
-	r_cam.fov_y = 2.0 * atan((r_buf.h / 2.0) / r_cam.dist);
+	r_defs.fov_x = fov_x;
+	r_defs.dist = (r_defs.w / 2.0) / tan(r_defs.fov_x / 2.0);
+	r_defs.fov_y = 2.0 * atan((r_defs.h / 2.0) / r_defs.dist);
 
-	Vec_Clear (r_cam.pos);
-	Vec_Clear (r_cam.angles);
+	Vec_Clear (r_defs.pos);
+	Vec_Clear (r_defs.angles);
 
-	r_cam.angles[1] = M_PI; /* start off looking to +z axis */
+	r_defs.angles[1] = M_PI; /* start off looking to +z axis */
 
 	cameraChanged ();
 }
@@ -65,19 +65,19 @@ cameraChanged (void)
 	float v[3];
 
 	/* make transformation matrix */
-	Vec_Copy (r_cam.angles, v);
+	Vec_Copy (r_defs.angles, v);
 	Vec_Scale (v, -1.0);
-	Vec_AnglesMatrix (v, r_cam.xform, ROT_MATRIX_ORDER_XYZ);
+	Vec_AnglesMatrix (v, r_defs.xform, ROT_MATRIX_ORDER_XYZ);
 
 	/* We're looking down the -z axis, and our projection calculation
 	 * assumes greater z is further away. So negate z values so
 	 * positive z objects are behind the camera. */
-	Vec_Scale (r_cam.xform[2], -1.0);
+	Vec_Scale (r_defs.xform[2], -1.0);
 
 	/* get view vectors */
-	Vec_Copy (r_cam.xform[0], r_cam.right);
-	Vec_Copy (r_cam.xform[1], r_cam.up);
-	Vec_Copy (r_cam.xform[2], r_cam.forward);
+	Vec_Copy (r_defs.xform[0], r_defs.right);
+	Vec_Copy (r_defs.xform[1], r_defs.up);
+	Vec_Copy (r_defs.xform[2], r_defs.forward);
 
 	//TODO: setup view planes
 }
@@ -88,19 +88,19 @@ cameraRotatePixels (float dx, float dy)
 {
 	/* using right-handed coordinate system, so positive yaw goes
 	 * left across the screen and positive roll goes up */
-	r_cam.angles[YAW] += r_cam.fov_x * (-dx / r_buf.w);
-	r_cam.angles[PITCH] += r_cam.fov_y * (-dy / r_buf.h);
+	r_defs.angles[YAW] += r_defs.fov_x * (-dx / r_defs.w);
+	r_defs.angles[PITCH] += r_defs.fov_y * (-dy / r_defs.h);
 
 	/* restrict camera angles */
-	if (r_cam.angles[PITCH] > M_PI / 2.0)
-		r_cam.angles[PITCH] = M_PI / 2.0;
-	if (r_cam.angles[PITCH] < -M_PI / 2.0)
-		r_cam.angles[PITCH] = -M_PI / 2.0;
+	if (r_defs.angles[PITCH] > M_PI / 2.0)
+		r_defs.angles[PITCH] = M_PI / 2.0;
+	if (r_defs.angles[PITCH] < -M_PI / 2.0)
+		r_defs.angles[PITCH] = -M_PI / 2.0;
 
-	while (r_cam.angles[YAW] >= M_PI * 2.0)
-		r_cam.angles[YAW] -= M_PI * 2.0;
-	while (r_cam.angles[YAW] < 0.0)
-		r_cam.angles[YAW] += M_PI * 2.0;
+	while (r_defs.angles[YAW] >= M_PI * 2.0)
+		r_defs.angles[YAW] -= M_PI * 2.0;
+	while (r_defs.angles[YAW] < 0.0)
+		r_defs.angles[YAW] += M_PI * 2.0;
 
 	cameraChanged ();
 }
@@ -111,17 +111,17 @@ cameraThrust (float right, float up, float forward)
 {
 	float v[3];
 
-	Vec_Copy (r_cam.right, v);
+	Vec_Copy (r_defs.right, v);
 	Vec_Scale (v, right);
-	Vec_Add (r_cam.pos, v, r_cam.pos);
+	Vec_Add (r_defs.pos, v, r_defs.pos);
 
-	Vec_Copy (r_cam.up, v);
+	Vec_Copy (r_defs.up, v);
 	Vec_Scale (v, up);
-	Vec_Add (r_cam.pos, v, r_cam.pos);
+	Vec_Add (r_defs.pos, v, r_defs.pos);
 
-	Vec_Copy (r_cam.forward, v);
+	Vec_Copy (r_defs.forward, v);
 	Vec_Scale (v, forward);
-	Vec_Add (r_cam.pos, v, r_cam.pos);
+	Vec_Add (r_defs.pos, v, r_defs.pos);
 
 	cameraChanged ();
 }
@@ -133,7 +133,7 @@ transformVec (const float v[3], float out[3])
 	int i;
 
 	for (i = 0; i < 3; i++)
-		out[i] = Vec_Dot (r_cam.xform[i], v);
+		out[i] = Vec_Dot (r_defs.xform[i], v);
 }
 
 
@@ -142,20 +142,20 @@ clearScreen (void)
 {
 	int y;
 
-	if (((uintptr_t)r_buf.screen & 0x3) == 0 && (r_buf.w % 4) == 0)
+	if (((uintptr_t)r_defs.screen & 0x3) == 0 && (r_defs.w % 4) == 0)
 	{
-		for (y = 0; y < r_buf.h; y++)
+		for (y = 0; y < r_defs.h; y++)
 		{
-			int w2 = r_buf.w >> 2;
-			uint32_t *dest = (uint32_t *)(r_buf.screen + y * r_buf.pitch);
+			int w2 = r_defs.w >> 2;
+			uint32_t *dest = (uint32_t *)(r_defs.screen + y * r_defs.pitch);
 			while (w2--)
 				*dest++ = 0;
 		}
 	}
 	else
 	{
-		for (y = 0; y < r_buf.h; y++)
-			memset (r_buf.screen + y * r_buf.pitch, 0, r_buf.w);
+		for (y = 0; y < r_defs.h; y++)
+			memset (r_defs.screen + y * r_defs.pitch, 0, r_defs.w);
 	}
 }
 
@@ -200,16 +200,16 @@ drawWorld (void)
 	for (i = 0; i < 8; i++)
 	{
 		v = p[i];
-		Vec_Subtract (v, r_cam.pos, local);
+		Vec_Subtract (v, r_defs.pos, local);
 		transformVec (local, n);
 		if (n[2] > 0.0)
 		{
 			zi = 1.0 / n[2];
-			uu = (int)(r_cam.center_x + r_cam.dist * zi * n[0]);
-			vv = (int)(r_cam.center_y - r_cam.dist * zi * n[1]);
-			if (uu >= 0 && uu < r_buf.w && vv >= 0 && vv < r_buf.h)
+			uu = (int)(r_defs.center_x + r_defs.dist * zi * n[0]);
+			vv = (int)(r_defs.center_y - r_defs.dist * zi * n[1]);
+			if (uu >= 0 && uu < r_defs.w && vv >= 0 && vv < r_defs.h)
 			{
-				r_buf.screen[vv * r_buf.pitch + uu] = 4;
+				r_defs.screen[vv * r_defs.pitch + uu] = 4;
 			}
 		}
 	}

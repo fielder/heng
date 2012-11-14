@@ -3,31 +3,13 @@
 
 #include <stdint.h>
 
-struct r_buf_s
+struct r_defs_s
 {
+	/* draw buffer */
 	int w, h, pitch;
 	uint8_t *screen;
-};
 
-struct viewplane_s
-{
-	float normal[3];
-	float dist;
-	int type;
-	int signbits;
-	struct viewplane_s *next;
-};
-
-enum
-{
-	VPLANE_LEFT,
-	VPLANE_TOP,
-	VPLANE_RIGHT,
-	VPLANE_BOTTOM
-};
-
-struct r_camera_s
-{
+	/* camera defs */
 	float center_x;
 	float center_y;
 
@@ -49,8 +31,24 @@ struct r_camera_s
 //	struct viewplane_s vplanes[4];
 };
 
-extern struct r_buf_s r_buf;
-extern struct r_camera_s r_cam;
+struct viewplane_s
+{
+	float normal[3];
+	float dist;
+	int type;
+	int signbits;
+	struct viewplane_s *next;
+};
+
+enum
+{
+	VPLANE_LEFT,
+	VPLANE_TOP,
+	VPLANE_RIGHT,
+	VPLANE_BOTTOM
+};
+
+extern struct r_defs_s r_defs;
 
 /* ================================================================== */
 
