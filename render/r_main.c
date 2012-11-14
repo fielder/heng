@@ -26,20 +26,6 @@ setup (uint8_t *buf, int w, int h, int pitch, float fov_x)
 }
 
 
-void
-drawPalette (void)
-{
-	int x, y;
-
-	for (y = 0; y < 128 && y < r_defs.h; y++)
-	{
-		uint8_t *dest = r_defs.screen + y * r_defs.pitch;
-		for (x = 0; x < 128 && x < r_defs.w; x++)
-			*dest++ = ((y << 1) & 0xf0) + (x >> 3);
-	}
-}
-
-
 static void
 initCamera (float fov_x)
 {
@@ -212,5 +198,19 @@ drawWorld (void)
 				r_defs.screen[vv * r_defs.pitch + uu] = 4;
 			}
 		}
+	}
+}
+
+
+void
+drawPalette (void)
+{
+	int x, y;
+
+	for (y = 0; y < 128 && y < r_defs.h; y++)
+	{
+		uint8_t *dest = r_defs.screen + y * r_defs.pitch;
+		for (x = 0; x < 128 && x < r_defs.w; x++)
+			*dest++ = ((y << 1) & 0xf0) + (x >> 3);
 	}
 }

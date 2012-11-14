@@ -3,6 +3,8 @@ RENDER_SO = "./render.so"
 WIDTH = 320
 HEIGHT = 240
 
+fov = 90.0
+
 # draw buffer used by C renderer
 screen = None
 

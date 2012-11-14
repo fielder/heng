@@ -6,12 +6,11 @@ import pygame
 import hvars
 
 surf = None
-row_buffers = None
+row_buffers = []
 
 
 def init():
     global surf
-    global row_buffers
 
     # Ideally we'd init only what we need, but this is the only way to
     # initialize pygame's time module. There's no pygame.time.init().
@@ -26,7 +25,6 @@ def init():
     print "Allocated %dx%d screen" % (w, h)
 
     if surf.get_pitch() != w:
-        row_buffers = []
         for y in xrange(h):
             row_buffers.append(buffer(hvars.screen, y * w, w))
         print "Using row buffers for %d-pitch screen" % surf.get_pitch()
@@ -39,7 +37,9 @@ def shutdown():
 
 
 def swapBuffer():
-    if surf.get_pitch() == surf.get_width():
+    pitch = surf.get_pitch()
+
+    if pitch == surf.get_width():
 
         # For some seriously wacky reason, we can't pass in hvars.screen
         # directly to the write() method... so we make a temp variable
@@ -53,7 +53,7 @@ def swapBuffer():
         dest = 0
         for scanline in row_buffers:
             prox.write(scanline, dest)
-            dest += surf.get_pitch()
+            dest += pitch
 
     pygame.display.flip()
 
@@ -82,6 +82,7 @@ _binds = {} # int/str -> func
 # to avoid a huge initial mouse delta when grabbing
 _ignore_mousemove = 1
 
+# find key names by looking into the pygame module for names
 for item_name in dir(pygame):
     if item_name.startswith("K_"):
         _key_names[item_name[2:].lower()] = getattr(pygame, item_name)

@@ -37,6 +37,7 @@ struct viewplane_s
 	float dist;
 	int type;
 	int signbits;
+
 	struct viewplane_s *next;
 };
 

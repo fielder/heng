@@ -5,7 +5,7 @@ import hvars
 import io
 
 palettes = []
-cur_pal_idx = -1
+_cur_pal_idx = -1
 
 
 def _paletteAtOffset(raw, off):
@@ -18,8 +18,6 @@ def _paletteAtOffset(raw, off):
 
 
 def init():
-    global palettes
-
     hvars.c_api = ctypes.cdll.LoadLibrary(hvars.RENDER_SO)
     print "Loaded %s" % hvars.RENDER_SO
 
@@ -27,7 +25,7 @@ def init():
                       hvars.WIDTH,
                       hvars.HEIGHT,
                       hvars.WIDTH,
-                      ctypes.c_float(math.radians(90.0)))
+                      ctypes.c_float(math.radians(hvars.fov)))
 
     raw = hvars.iwad.readLump("PLAYPAL")
     for off in xrange(0, len(raw), 768):
@@ -47,8 +45,8 @@ def refresh():
 
 
 def setPalette(palidx):
-    global cur_pal_idx
+    global _cur_pal_idx
 
-    if palidx != cur_pal_idx:
-        cur_pal_idx = palidx
-        io.setPalette(palettes[cur_pal_idx])
+    if palidx != _cur_pal_idx:
+        _cur_pal_idx = palidx
+        io.setPalette(palettes[_cur_pal_idx])
