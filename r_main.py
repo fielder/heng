@@ -1,13 +1,11 @@
+import math
 import ctypes
 
 import hvars
-import cdefs
 import io
-import r_camera
 
 palettes = []
 cur_pal_idx = -1
-c_api = None
 
 
 def _paletteAtOffset(raw, off):
@@ -21,12 +19,15 @@ def _paletteAtOffset(raw, off):
 
 def init():
     global palettes
-    global c_api
 
-    c_api = ctypes.cdll.LoadLibrary(hvars.RENDER_SO)
+    hvars.c_api = ctypes.cdll.LoadLibrary(hvars.RENDER_SO)
     print "Loaded %s" % hvars.RENDER_SO
 
-    c_api.setup(hvars.screen, hvars.WIDTH, hvars.HEIGHT, hvars.WIDTH)
+    hvars.c_api.setup(hvars.screen,
+                      hvars.WIDTH,
+                      hvars.HEIGHT,
+                      hvars.WIDTH,
+                      ctypes.c_float(math.radians(90.0)))
 
     raw = hvars.iwad.readLump("PLAYPAL")
     for off in xrange(0, len(raw), 768):
@@ -35,18 +36,14 @@ def init():
 
     setPalette(0)
 
-    r_camera.init()
-
 
 def refresh():
     # 2D drawing
     #TODO: ...
+#   hvars.c_api.drawPalette()
 
     # 3D drawing
-    c_api.setCamera(ctypes.c_float(hvars.camera.fov_x),
-                    cdefs.Vec3(*hvars.camera.pos),
-                    cdefs.Vec3(*hvars.camera.angles))
-#   c_api.drawWorld( ... )
+    hvars.c_api.drawWorld()
 
 
 def setPalette(palidx):

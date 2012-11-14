@@ -26,7 +26,7 @@ enum
 	VPLANE_BOTTOM
 };
 
-struct r_view_s
+struct r_camera_s
 {
 	float center_x;
 	float center_y;
@@ -40,17 +40,17 @@ struct r_view_s
 
 	float angles[3]; /* radians */
 
-//	float right[3];
-//	float up[3];
-//	float forward[3];
+	float xform[3][3]; /* world-to-camera */
 
-//	float xform[3][3]; /* world-to-camera */
+	float right[3];
+	float up[3];
+	float forward[3];
 
 //	struct viewplane_s vplanes[4];
 };
 
 extern struct r_buf_s r_buf;
-extern struct r_view_s r_view;
+extern struct r_camera_s r_cam;
 
 /* ================================================================== */
 

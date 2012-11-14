@@ -15,6 +15,6 @@ frametime = 0.0
 iwad = None
 hwa = None
 
-camera = None
+c_api = None
 
 do_quit = 0

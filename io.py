@@ -78,6 +78,10 @@ def milliSeconds():
 _key_names = {} # name -> int
 _binds = {} # int/str -> func
 
+# number of mouse motions to ignore right after grabbing the mouse; used
+# to avoid a huge initial mouse delta when grabbing
+_ignore_mousemove = 1
+
 for item_name in dir(pygame):
     if item_name.startswith("K_"):
         _key_names[item_name[2:].lower()] = getattr(pygame, item_name)
@@ -85,9 +89,13 @@ del(_key_names["last"]) # not a real key
 
 
 def toggleGrab():
+    global _ignore_mousemove
+
     grabbed = not pygame.event.get_grab()
     pygame.event.set_grab(grabbed)
     pygame.mouse.set_visible(not grabbed)
+
+    _ignore_mousemove = 1
 
 
 def bind(obj, func):
@@ -112,6 +120,8 @@ def bind(obj, func):
 
 
 def runInput():
+    global _ignore_mousemove
+
     for ev in pygame.event.get():
         if ev.type == pygame.QUIT:
             hvars.do_quit = 1
@@ -123,8 +133,12 @@ def runInput():
             if b in _binds and _binds[b]:
                 _binds[b]()
         elif ev.type == pygame.MOUSEMOTION:
+            delta = pygame.mouse.get_rel()
             if pygame.event.get_grab():
-                if "mousemove" in _binds and _binds["mousemove"]:
-                    _binds["mousemove"](pygame.mouse.get_rel())
+                if _ignore_mousemove == 0:
+                    if "mousemove" in _binds and _binds["mousemove"]:
+                        _binds["mousemove"](delta)
+                else:
+                    _ignore_mousemove -= 1
         else:
             pass

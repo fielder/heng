@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import sys
+import ctypes
 
 import hvars
 import io
@@ -15,36 +16,27 @@ def _showFPS():
     print "%g fps" % hvars.fps_rate
 
 def _mouseMove(delt):
-    hvars.camera.rotatePixels(delt[0], delt[1])
+    hvars.c_api.cameraRotatePixels(ctypes.c_float(delt[0]), ctypes.c_float(delt[1]))
+
+def _cameraThrust(vec):
+    rt = ctypes.c_float(vec[0])
+    up = ctypes.c_float(vec[1])
+    fwd = ctypes.c_float(vec[2])
+    hvars.c_api.cameraThrust(rt, up, fwd)
 
 def _moveForward():
-    #TODO: ...
-    pass
+    _cameraThrust((0.0, 0.0, 8.0))
 
 def _moveRight():
-    #TODO: ...
-    pass
+    _cameraThrust((8.0, 0.0, 0.0))
 
 def _moveBack():
-    #TODO: ...
-    pass
+    _cameraThrust((0.0, 0.0, -8.0))
 
 def _moveLeft():
-    #TODO: ...
-    pass
+    _cameraThrust((-8.0, 0.0, 0.0))
 
 def _debug():
-    print hvars.camera.w
-    print hvars.camera.h
-    print hvars.camera.dist
-    print hvars.camera.fov_x
-    print hvars.camera.fov_y
-    print hvars.camera.pos
-    print hvars.camera.angles
-    hvars.camera.findViewVectors()
-    print hvars.camera.right
-    print hvars.camera.up
-    print hvars.camera.forward
     pass
 
 
