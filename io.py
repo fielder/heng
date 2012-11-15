@@ -77,6 +77,8 @@ def milliSeconds():
 
 _key_names = {} # name -> int
 _binds = {} # int/str -> func
+_binds_c = {} # continuous binds
+_pressed = [] # key ints, or strings for mouse buttons
 
 # number of mouse motions to ignore right after grabbing the mouse; used
 # to avoid a huge initial mouse delta when grabbing
@@ -99,8 +101,10 @@ def toggleGrab():
     _ignore_mousemove = 1
 
 
-def bind(obj, func):
+def _xlateBindable(obj):
     """
+    If we have a key name, translate to an SDL key code int.
+
     Caller can give an SDL key integer, a key name string, a button in
     the format "buttonX", or "mousemove".
     """
@@ -117,7 +121,25 @@ def bind(obj, func):
     elif type(obj) != types.IntType:
         raise Exception("invalid bindable \"%s\"" % str(obj))
 
-    _binds[obj] = func
+    return obj
+
+
+def bind(obj, func):
+    """
+    Bind a key/button/mousemove to trigger a one-time function when
+    pressed.
+    """
+
+    _binds[_xlateBindable(obj)] = func
+
+
+def bindContinuous(obj, func):
+    """
+    Bind a key/button/mousemove to trigger a continuous function every
+    frame.
+    """
+
+    _binds_c[_xlateBindable(obj)] = func
 
 
 def runInput():
@@ -126,13 +148,29 @@ def runInput():
     for ev in pygame.event.get():
         if ev.type == pygame.QUIT:
             hvars.do_quit = 1
+
         elif ev.type == pygame.KEYDOWN:
+            _pressed.append(ev.key)
+
             if ev.key in _binds and _binds[ev.key]:
                 _binds[ev.key]()
+
+        elif ev.type == pygame.KEYUP:
+            _pressed.remove(ev.key)
+
         elif ev.type == pygame.MOUSEBUTTONDOWN:
             b = "button%d" % ev.button
+
+            _pressed.append(b)
+
             if b in _binds and _binds[b]:
                 _binds[b]()
+
+        elif ev.type == pygame.MOUSEBUTTONUP:
+            b = "button%d" % ev.button
+
+            _pressed.remove(b)
+
         elif ev.type == pygame.MOUSEMOTION:
             delta = pygame.mouse.get_rel()
             if pygame.event.get_grab():
@@ -141,5 +179,10 @@ def runInput():
                         _binds["mousemove"](delta)
                 else:
                     _ignore_mousemove -= 1
+
         else:
             pass
+
+    for obj in _pressed:
+        if obj in _binds_c:
+            _binds_c[obj]()

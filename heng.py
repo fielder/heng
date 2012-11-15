@@ -18,31 +18,32 @@ def _showFPS():
 def _mouseMove(delt):
     hvars.c_api.cameraRotatePixels(ctypes.c_float(delt[0]), ctypes.c_float(delt[1]))
 
-_move_dirs = { "right": 0, "forward": 0, "up": 0 }
+_frame_move = { "right": 0.0, "forward": 0.0, "up": 0.0 }
 
 def _moveForward():
-#   _move_dirs["forward"] += { False: -1, True: 1 }
-    pass
+    _frame_move["forward"] += 1.0
 
 def _moveRight():
-#   _move_dirs["right"] += { False: -1, True: 1 }
-    pass
+    _frame_move["right"] += 1.0
 
 def _moveBack():
-#   _move_dirs["forward"] -= { False: -1, True: 1 }
-    pass
+    _frame_move["forward"] -= 1.0
 
 def _moveLeft():
-#   _move_dirs["right"] -= { False: -1, True: 1 }
-    pass
+    _frame_move["right"] -= 1.0
+
+def _moveUp():
+    _frame_move["up"] += 1.0
 
 def _cameraFly():
-#TODO: if up_pressed, ...
-    pass
-#   rt = ctypes.c_float(vec[0])
-#   up = ctypes.c_float(vec[1])
-#   fwd = ctypes.c_float(vec[2])
-#   hvars.c_api.cameraThrust(rt, up, fwd)
+    rt = _frame_move["right"] * hvars.frametime * hvars.MOVESPEED
+    up = _frame_move["up"] * hvars.frametime * hvars.MOVESPEED
+    fwd = _frame_move["forward"] * hvars.frametime * hvars.MOVESPEED
+
+    rt = ctypes.c_float(rt)
+    up = ctypes.c_float(up)
+    fwd = ctypes.c_float(fwd)
+    hvars.c_api.cameraThrust(rt, up, fwd)
 
 def _debug():
     pass
@@ -64,13 +65,17 @@ if __name__ == "__main__":
     io.bind("mousemove", _mouseMove)
     io.bind("g", io.toggleGrab)
     io.bind("x", _debug)
-    io.bind("period", _moveForward)
-    io.bind("u", _moveRight)
-    io.bind("e", _moveBack)
-    io.bind("o", _moveLeft)
+    io.bindContinuous("period", _moveForward)
+    io.bindContinuous("u", _moveRight)
+    io.bindContinuous("e", _moveBack)
+    io.bindContinuous("o", _moveLeft)
+    io.bindContinuous("button3", _moveUp)
 
     frame_start = io.milliSeconds()
     while not hvars.do_quit:
+        for direction in _frame_move.keys():
+            _frame_move[direction] = 0.0
+
         io.runInput()
 
         _cameraFly()
