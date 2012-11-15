@@ -155,8 +155,6 @@ drawWorld (void)
 	float *v, zi;
 	int uu, vv;
 
-	clearScreen ();
-
 	p[0][0] = 0.0;
 	p[0][1] = 0.0;
 	p[0][2] = 128.0;
@@ -212,5 +210,73 @@ drawPalette (void)
 		uint8_t *dest = r_defs.screen + y * r_defs.pitch;
 		for (x = 0; x < 128 && x < r_defs.w; x++)
 			*dest++ = ((y << 1) & 0xf0) + (x >> 3);
+	}
+}
+
+
+void
+drawLine (int x1, int y1, int x2, int y2, int c)
+{
+	int x, y;
+	int dx, dy;
+	int sx, sy;
+	int ax, ay;
+	int d;
+
+	if (0)
+	{
+		if (	x1 < 0 || x1 >= r_defs.w ||
+			x2 < 0 || x2 >= r_defs.w ||
+			y1 < 0 || y1 >= r_defs.h ||
+			y2 < 0 || y2 >= r_defs.h )
+		{
+			return;
+		}
+	}
+
+	dx = x2 - x1;
+	ax = 2 * (dx < 0 ? -dx : dx);
+	sx = dx < 0 ? -1 : 1;
+
+	dy = y2 - y1;
+	ay = 2 * (dy < 0 ? -dy : dy);
+	sy = dy < 0 ? -1 : 1;
+
+	x = x1;
+	y = y1;
+
+	if (ax > ay)
+	{
+		d = ay - ax / 2;
+		while (1)
+		{
+			r_defs.screen[y * r_defs.pitch + x] = c;
+			if (x == x2)
+				break;
+			if (d >= 0)
+			{
+				y += sy;
+				d -= ax;
+			}
+			x += sx;
+			d += ay;
+		}
+	}
+	else
+	{
+		d = ax - ay / 2;
+		while (1)
+		{
+			r_defs.screen[y * r_defs.pitch + x] = c;
+			if (y == y2)
+				break;
+			if (d >= 0)
+			{
+				x += sx;
+				d -= ay;
+			}
+			y += sy;
+			d += ax;
+		}
 	}
 }

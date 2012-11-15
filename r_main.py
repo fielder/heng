@@ -36,9 +36,12 @@ def init():
 
 
 def refresh():
+    hvars.c_api.clearScreen()
+
     # 2D drawing
     #TODO: ...
 #   hvars.c_api.drawPalette()
+#   hvars.c_api.drawLine(50, 50, 100, 200, 4)
 
     # 3D drawing
     hvars.c_api.drawWorld()
