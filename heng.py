@@ -26,23 +26,22 @@ def _moveForward():
 def _moveRight():
     _frame_move["right"] += 1.0
 
+def _moveUp():
+    _frame_move["up"] += 1.0
+
 def _moveBack():
     _frame_move["forward"] -= 1.0
 
 def _moveLeft():
     _frame_move["right"] -= 1.0
 
-def _moveUp():
-    _frame_move["up"] += 1.0
+def _moveDown():
+    _frame_move["up"] -= 1.0
 
 def _cameraFly():
-    rt = _frame_move["right"] * hvars.frametime * hvars.MOVESPEED
-    up = _frame_move["up"] * hvars.frametime * hvars.MOVESPEED
-    fwd = _frame_move["forward"] * hvars.frametime * hvars.MOVESPEED
-
-    rt = ctypes.c_float(rt)
-    up = ctypes.c_float(up)
-    fwd = ctypes.c_float(fwd)
+    rt = ctypes.c_float(_frame_move["right"] * hvars.frametime * hvars.MOVESPEED)
+    up = ctypes.c_float(_frame_move["up"] * hvars.frametime * hvars.MOVESPEED)
+    fwd = ctypes.c_float(_frame_move["forward"] * hvars.frametime * hvars.MOVESPEED)
     hvars.c_api.cameraThrust(rt, up, fwd)
 
 def _debug():

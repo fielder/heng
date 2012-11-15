@@ -40,8 +40,8 @@ struct mnode_s
 {
     /* shared with leaf structure */
     unsigned int flags;
-    float mins[3];
-    float maxs[3];
+    short mins[3];
+    short maxs[3];
 
     /* specific to node */
     void *children[2]; /* could be node or leaf */
@@ -52,8 +52,8 @@ struct mleaf_s
 {
     /* shared with node structure */
     unsigned int flags;
-    float mins[3];
-    float maxs[3];
+    short mins[3];
+    short maxs[3];
 
     /* specific to leaf */
     struct msurface_s *surfs;
