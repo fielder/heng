@@ -156,7 +156,12 @@ def runInput():
                 _binds[ev.key]()
 
         elif ev.type == pygame.KEYUP:
-            _pressed.remove(ev.key)
+            try:
+                _pressed.remove(ev.key)
+            except ValueError:
+                # sometimes we'll get a up event w/o a down; eg: alt-click
+                # to drag a window under some window managers
+                pass
 
         elif ev.type == pygame.MOUSEBUTTONDOWN:
             b = "button%d" % ev.button
@@ -169,7 +174,12 @@ def runInput():
         elif ev.type == pygame.MOUSEBUTTONUP:
             b = "button%d" % ev.button
 
-            _pressed.remove(b)
+            try:
+                _pressed.remove(b)
+            except ValueError:
+                # sometimes we'll get a up event w/o a down; eg: alt-click
+                # to drag a window under some window managers
+                pass
 
         elif ev.type == pygame.MOUSEMOTION:
             delta = pygame.mouse.get_rel()
