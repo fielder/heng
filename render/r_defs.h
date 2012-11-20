@@ -13,10 +13,15 @@ struct r_defs_s
 	float center_x;
 	float center_y;
 
+	/* the corner-most rays */
+	float near[4][3];
+	float far[4][3];
+
 	float fov_x; /* radians */
 	float fov_y; /* radians */
 
-	float dist;
+	float near_dist;
+	float far_dist;
 
 	float pos[3];
 

@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdint.h>
 #include <math.h>
 #include <string.h>
@@ -10,6 +11,9 @@ initCamera (float);
 
 static void
 cameraChanged (void);
+
+static void
+transformVec (float xform[3][3], const float v[3], float out[3]);
 
 struct r_defs_s r_defs;
 
@@ -33,13 +37,15 @@ initCamera (float fov_x)
 	r_defs.center_y = r_defs.h / 2.0 - 0.5;
 
 	r_defs.fov_x = fov_x;
-	r_defs.dist = (r_defs.w / 2.0) / tan(r_defs.fov_x / 2.0);
-	r_defs.fov_y = 2.0 * atan((r_defs.h / 2.0) / r_defs.dist);
+	r_defs.near_dist = (r_defs.w / 2.0) / tan(r_defs.fov_x / 2.0);
+	printf ("%g\n",r_defs.near_dist );
+	r_defs.far_dist = 64 * 48;
+	r_defs.fov_y = 2.0 * atan((r_defs.h / 2.0) / r_defs.near_dist);
 
 	Vec_Clear (r_defs.pos);
 	Vec_Clear (r_defs.angles);
 
-	r_defs.angles[1] = M_PI; /* start off looking to +z axis */
+//	r_defs.angles[1] = M_PI; /* start off looking to +z axis */
 
 	cameraChanged ();
 }
@@ -48,7 +54,10 @@ initCamera (float fov_x)
 static void
 cameraChanged (void)
 {
+	float cam2world[3][3];
 	float v[3];
+	float x, y, z, xadj, yadj;
+	int i;
 
 	/* make transformation matrix */
 	Vec_Copy (r_defs.angles, v);
@@ -66,6 +75,64 @@ cameraChanged (void)
 	Vec_Copy (r_defs.xform[2], r_defs.forward);
 
 	//TODO: setup view planes
+
+	x = r_defs.w / 2.0;
+	y = r_defs.h / 2.0;
+	z = -r_defs.near_dist;
+	xadj = 0.5;
+	yadj = 0.5;
+	// top-left
+	r_defs.near[0][0] = -x + xadj;
+	r_defs.near[0][1] = y - yadj;
+	r_defs.near[0][2] = z;
+	// top-right
+	r_defs.near[1][0] = x - xadj;
+	r_defs.near[1][1] = y - yadj;
+	r_defs.near[1][2] = z;
+	// bottom-left
+	r_defs.near[2][0] = -x + xadj;
+	r_defs.near[2][1] = -y + yadj;
+	r_defs.near[2][2] = z;
+	// bottom-right
+	r_defs.near[3][0] = x - xadj;
+	r_defs.near[3][1] = -y + yadj;
+	r_defs.near[3][2] = z;
+
+	x = r_defs.far_dist * tan(r_defs.fov_x / 2.0);
+	y = r_defs.far_dist * tan(r_defs.fov_y / 2.0);
+	z = -r_defs.far_dist;
+	/* The adjustment to get to the center of a pixel on the far plane
+	 * should be larger, as the screen pixels projected onto the back
+	 * plane are much larger. */
+	xadj = 0.5 * (x / (r_defs.w / 2.0));
+	yadj = 0.5 * (y / (r_defs.h / 2.0));
+	// top-left
+	r_defs.far[0][0] = -x + xadj;
+	r_defs.far[0][1] = y - yadj;
+	r_defs.far[0][2] = z;
+	// top-right
+	r_defs.far[1][0] = x - xadj;
+	r_defs.far[1][1] = y - yadj;
+	r_defs.far[1][2] = z;
+	// bottom-left
+	r_defs.far[2][0] = -x + xadj;
+	r_defs.far[2][1] = -y + yadj;
+	r_defs.far[2][2] = z;
+	// bottom-right
+	r_defs.far[3][0] = x - xadj;
+	r_defs.far[3][1] = -y + yadj;
+	r_defs.far[3][2] = z;
+
+	/* move corner rays to world space */
+	Vec_AnglesMatrix (r_defs.angles, cam2world, ROT_MATRIX_ORDER_ZYX);
+	for (i = 0; i < 4; i++)
+	{
+		transformVec (cam2world, r_defs.near[i], v);
+		Vec_Add (r_defs.pos, v, r_defs.near[i]);
+
+		transformVec (cam2world, r_defs.far[i], v);
+		Vec_Add (r_defs.pos, v, r_defs.far[i]);
+	}
 }
 
 
@@ -114,12 +181,12 @@ cameraThrust (float right, float up, float forward)
 
 
 static void
-transformVec (const float v[3], float out[3])
+transformVec (float xform[3][3], const float v[3], float out[3])
 {
 	int i;
 
 	for (i = 0; i < 3; i++)
-		out[i] = Vec_Dot (r_defs.xform[i], v);
+		out[i] = Vec_Dot (xform[i], v);
 }
 
 
@@ -146,57 +213,154 @@ clearScreen (void)
 }
 
 
+static void
+drawPoint3D (float p[3])
+{
+	float local[3], v[3];
+	float zi;
+	int uu, vv;
+
+	Vec_Subtract (p, r_defs.pos, local);
+	transformVec (r_defs.xform, local, v);
+	if (v[2] > 0.0)
+	{
+		zi = 1.0 / v[2];
+		uu = (int)(r_defs.center_x + r_defs.near_dist * zi * v[0]);
+		vv = (int)(r_defs.center_y - r_defs.near_dist * zi * v[1]);
+		if (uu >= 0 && uu < r_defs.w && vv >= 0 && vv < r_defs.h)
+			r_defs.screen[vv * r_defs.pitch + uu] = 4;
+	}
+}
+
+
+static void
+drawFrustum (void)
+{
+	int i;
+	for (i = 0; i < 4; i++)
+	{
+		drawPoint3D (r_defs.near[i]);
+		drawPoint3D (r_defs.far[i]);
+	}
+}
+
+
+static int
+testHit (const float s[3], const float e[3])
+{
+	float normal[3], dist;
+	float ds, de, frac;
+	float p[3];
+
+	normal[0] = 0.0;
+	normal[1] = 1.0;
+	normal[2] = 0.0;
+	dist = 0.0;
+
+	ds = (s[0] * normal[0] + s[1] * normal[1] + s[2] * normal[2]) - dist;
+	de = (e[0] * normal[0] + e[1] * normal[1] + e[2] * normal[2]) - dist;
+
+	if ((ds <= 0 && de <= 0) || (ds >= 0 && de >= 0))
+		return 0;
+
+	frac = ds / (ds - de);
+	p[0] = s[0] + frac * (e[0] - s[0]);
+	p[1] = s[1] + frac * (e[1] - s[1]);
+	p[2] = s[2] + frac * (e[2] - s[2]);
+
+	if (p[0] >= 0 && p[0] <= 32 && p[2] >= -128 && p[2] <= -32)
+		return 1;
+
+	return 0;
+}
+
+
+static void
+drawPoly (void)
+{
+	float near_dx[3], near_dy[3];
+	float far_dx[3], far_dy[3];
+	float start[3], end[3], s[3], e[3];
+	int x, y;
+	uint8_t *dest;
+
+	near_dx[0] = (r_defs.near[1][0] - r_defs.near[0][0]) / (r_defs.w - 1);
+	near_dx[1] = (r_defs.near[1][1] - r_defs.near[0][1]) / (r_defs.w - 1);
+	near_dx[2] = (r_defs.near[1][2] - r_defs.near[0][2]) / (r_defs.w - 1);
+	near_dy[0] = (r_defs.near[2][0] - r_defs.near[0][0]) / (r_defs.h - 1);
+	near_dy[1] = (r_defs.near[2][1] - r_defs.near[0][1]) / (r_defs.h - 1);
+	near_dy[2] = (r_defs.near[2][2] - r_defs.near[0][2]) / (r_defs.h - 1);
+	far_dx[0] = (r_defs.far[1][0] - r_defs.far[0][0]) / (r_defs.w - 1);
+	far_dx[1] = (r_defs.far[1][1] - r_defs.far[0][1]) / (r_defs.w - 1);
+	far_dx[2] = (r_defs.far[1][2] - r_defs.far[0][2]) / (r_defs.w - 1);
+	far_dy[0] = (r_defs.far[2][0] - r_defs.far[0][0]) / (r_defs.h - 1);
+	far_dy[1] = (r_defs.far[2][1] - r_defs.far[0][1]) / (r_defs.h - 1);
+	far_dy[2] = (r_defs.far[2][2] - r_defs.far[0][2]) / (r_defs.h - 1);
+
+	dest = r_defs.screen;
+
+	Vec_Copy (r_defs.near[0], start);
+	Vec_Copy (r_defs.far[0], end);
+	for (y = 0; y < r_defs.h; y++)
+	{
+		s[0] = start[0];
+		s[1] = start[1];
+		s[2] = start[2];
+		e[0] = end[0];
+		e[1] = end[1];
+		e[2] = end[2];
+		for (x = 0; x < r_defs.w; x++)
+		{
+//			if ((y & 3) == 0 && (x & 3) == 0)
+			{
+				if (testHit(s, e))
+					dest[x] = 4;
+			}
+
+			s[0] += near_dx[0];
+			s[1] += near_dx[1];
+			s[2] += near_dx[2];
+			e[0] += far_dx[0];
+			e[1] += far_dx[1];
+			e[2] += far_dx[2];
+		}	
+		start[0] += near_dy[0];
+		start[1] += near_dy[1];
+		start[2] += near_dy[2];
+		end[0] += far_dy[0];
+		end[1] += far_dy[1];
+		end[2] += far_dy[2];
+
+		dest += r_defs.pitch;
+	}	
+}
+
+
 void
 drawWorld (void)
 {
-	int i;
-	float p[8][3];
-	float local[3], n[3];
-	float *v, zi;
-	int uu, vv;
-
-	p[0][0] = 0.0;
-	p[0][1] = 0.0;
-	p[0][2] = 128.0;
-	p[1][0] = 32.0;
-	p[1][1] = 0.0;
-	p[1][2] = 128.0;
-	p[2][0] = 32.0;
-	p[2][1] = 0.0;
-	p[2][2] = 128.0 + 32;
-	p[3][0] = 0.0;
-	p[3][1] = 0.0;
-	p[3][2] = 128.0 + 32;
-
-	p[4][0] = 0.0;
-	p[4][1] = 64.0;
-	p[4][2] = 128.0;
-	p[5][0] = 32.0;
-	p[5][1] = 64.0;
-	p[5][2] = 128.0;
-	p[6][0] = 32.0;
-	p[6][1] = 64.0;
-	p[6][2] = 128.0 + 32;
-	p[7][0] = 0.0;
-	p[7][1] = 64.0;
-	p[7][2] = 128.0 + 32;
-
-	for (i = 0; i < 8; i++)
+	float v[3];
+	int x, z;
+	for (z = 0; z < 16; z++)
 	{
-		v = p[i];
-		Vec_Subtract (v, r_defs.pos, local);
-		transformVec (local, n);
-		if (n[2] > 0.0)
+		for (x = 0; x < 16; x++)
 		{
-			zi = 1.0 / n[2];
-			uu = (int)(r_defs.center_x + r_defs.dist * zi * n[0]);
-			vv = (int)(r_defs.center_y - r_defs.dist * zi * n[1]);
-			if (uu >= 0 && uu < r_defs.w && vv >= 0 && vv < r_defs.h)
-			{
-				r_defs.screen[vv * r_defs.pitch + uu] = 4;
-			}
+			v[0] = x;
+			v[1] = 0.0;
+			v[2] = z;
+			drawPoint3D(v);
 		}
 	}
+	for (x = 0; x < 128; x++)
+	{
+		v[0] = x; v[1] = 0.0; v[2] = 0.0; drawPoint3D(v);
+		v[0] = 0.0; v[1] = x; v[2] = 0.0; drawPoint3D(v);
+		v[0] = 0.0; v[1] = 0.0; v[2] = x; drawPoint3D(v);
+	}
+
+	drawFrustum ();
+
+	drawPoly ();
 }
 
 
