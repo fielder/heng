@@ -13,8 +13,7 @@ struct r_defs_s
 	float center_x;
 	float center_y;
 
-	/* the corner-most rays */
-	float near[4][3];
+	/* the corner-most rays terminating points */
 	float far[4][3];
 
 	float fov_x; /* radians */
@@ -29,7 +28,7 @@ struct r_defs_s
 
 	float xform[3][3]; /* world-to-camera */
 
-	float right[3];
+	float left[3];
 	float up[3];
 	float forward[3];
 
