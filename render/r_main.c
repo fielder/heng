@@ -225,7 +225,7 @@ drawFrustum (void)
  *  fairly large and groups of rays will hit the same surface.
  * If the ray end-point increments results in excessive precision
  *  error we can probably get away with just calculating the endpoint
- *  on the fly.
+ *  directly rather than stepping toward it.
  * Probably need to include epsilons in intersection checks.
  * When checking containment, maybe include an epsilon on the back of
  *  the edge plane.
@@ -239,6 +239,8 @@ drawFrustum (void)
  *  would similar to the edge plane concept.
  * If using SIMD, maybe build a type of pipelined engine to process
  *  rays at each stage of the casting process.
+ * Can probably cache any needed texturing calculation variables each
+ *  frame as the surface angles/etc will be constant.
  */
 
 static int
@@ -319,6 +321,7 @@ drawPoly (void)
 			*/
 
 //			if ((x & 3) == 0 || (y & 3) == 0)
+//			if ((x & 3) == 0)
 			{
 				if (testHit(normal, dist, r_defs.pos, e))
 					dest[x] = 4;
