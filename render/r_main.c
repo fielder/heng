@@ -131,12 +131,12 @@ cameraRotatePixels (float dx, float dy)
 
 
 void
-cameraThrust (float right, float up, float forward)
+cameraThrust (float left, float up, float forward)
 {
 	float v[3];
 
 	Vec_Copy (r_defs.left, v);
-	Vec_Scale (v, -right);
+	Vec_Scale (v, left);
 	Vec_Add (r_defs.pos, v, r_defs.pos);
 
 	Vec_Copy (r_defs.up, v);
@@ -216,6 +216,9 @@ drawFrustum (void)
  * NOTES:
  *
  * Use plane types for quick plane side checks
+ * When building the map, prefer axis-aligned planes when possible.
+ *  Especially true for edge planes, as the plane doesn't have to
+ *  be perpindicular to the surface.
  * Can speed up the ray end-point calculations (SIMD)
  * Remember to keep structures aligned for SSE instructions
  * Cast 4+ rays at once. This should work well as the geometry is
@@ -225,7 +228,7 @@ drawFrustum (void)
  *  on the fly.
  * Probably need to include epsilons in intersection checks.
  * When checking containment, maybe include an epsilon on the back of
- *  the plane.
+ *  the edge plane.
  * Could get crazy and use a BSP-style approach to possibly make
  *  the containment determination faster. The BSP would organize the
  *  surfaces on the leaf plane. Note splits should never be required;
