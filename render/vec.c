@@ -94,6 +94,15 @@ Vec_Length (const float v[3])
 
 
 void
+Vec_Transform (float xform[3][3], const float v[3], float out[3])
+{
+	out[0] = xform[0][0] * v[0] + xform[0][1] * v[1] + xform[0][2] * v[2];
+	out[1] = xform[1][0] * v[0] + xform[1][1] * v[1] + xform[1][2] * v[2];
+	out[2] = xform[2][0] * v[0] + xform[2][1] * v[1] + xform[2][2] * v[2];
+}
+
+
+void
 Vec_SnapPlane (float normal[3], float *dist)
 {
 	int i;

@@ -72,6 +72,9 @@ extern float
 Vec_Length (const float v[3]);
 
 extern void
+Vec_Transform (float xform[3][3], const float v[3], float out[3]);
+
+extern void
 Vec_SnapPlane (float normal[3], float *dist);
 
 extern void
