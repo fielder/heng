@@ -1,62 +1,6 @@
 #ifndef __R_DEFS_H__
 #define __R_DEFS_H__
 
-#include <stdint.h>
-
-struct r_defs_s
-{
-	/* draw buffer */
-	int w, h, pitch;
-	uint8_t *screen;
-
-	/* camera defs */
-	float center_x;
-	float center_y;
-
-	/* the corner-most rays terminating points */
-	float far[4][3];
-
-	float fov_x; /* radians */
-	float fov_y; /* radians */
-
-	float near_dist;
-	float far_dist;
-
-	float pos[3];
-
-	float angles[3]; /* radians */
-
-	float xform[3][3]; /* world-to-camera */
-
-	float left[3];
-	float up[3];
-	float forward[3];
-
-//	struct viewplane_s vplanes[4];
-};
-
-struct viewplane_s
-{
-	float normal[3];
-	float dist;
-	int type;
-	int signbits;
-
-	struct viewplane_s *next;
-};
-
-enum
-{
-	VPLANE_LEFT,
-	VPLANE_TOP,
-	VPLANE_RIGHT,
-	VPLANE_BOTTOM
-};
-
-extern struct r_defs_s r_defs;
-
-/* ================================================================== */
-
 struct r_patch_s
 {
 	short width;
@@ -68,8 +12,8 @@ struct r_patch_s
 
 struct r_post_s
 {
-	uint8_t topdelta; /* 0xff is last post in a column */
-	uint8_t length; /* <length> data bytes follow */
+	unsigned char topdelta; /* 0xff is last post in a column */
+	unsigned char length; /* <length> data bytes follow */
 };
 
 #endif /* __R_DEFS_H__ */

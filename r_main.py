@@ -21,7 +21,7 @@ def init():
     hvars.c_api = ctypes.cdll.LoadLibrary(hvars.RENDER_SO)
     print "Loaded %s" % hvars.RENDER_SO
 
-    hvars.c_api.setup(hvars.screen,
+    hvars.c_api.Setup(hvars.screen,
                       hvars.WIDTH,
                       hvars.HEIGHT,
                       hvars.WIDTH,
@@ -36,15 +36,15 @@ def init():
 
 
 def refresh():
-    hvars.c_api.clearScreen()
+    hvars.c_api.ClearScreen()
 
     # 2D drawing
     #TODO: ...
-#   hvars.c_api.drawPalette()
-#   hvars.c_api.drawLine(50, 50, 100, 200, 4)
+#   hvars.c_api.DrawPalette()
+#   hvars.c_api.DrawLine(50, 50, 100, 200, 4)
 
     # 3D drawing
-    hvars.c_api.drawWorld()
+    hvars.c_api.DrawWorld()
 
 
 def setPalette(palidx):

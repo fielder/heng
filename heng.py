@@ -16,7 +16,7 @@ def _showFPS():
     print "%g fps" % hvars.fps_rate
 
 def _mouseMove(delt):
-    hvars.c_api.cameraRotatePixels(ctypes.c_float(delt[0]), ctypes.c_float(delt[1]))
+    hvars.c_api.CameraRotatePixels(ctypes.c_float(delt[0]), ctypes.c_float(delt[1]))
 
 _frame_move = { "left": 0.0, "forward": 0.0, "up": 0.0 }
 
@@ -42,7 +42,7 @@ def _cameraFly():
     left = ctypes.c_float(_frame_move["left"] * hvars.frametime * hvars.MOVESPEED)
     up = ctypes.c_float(_frame_move["up"] * hvars.frametime * hvars.MOVESPEED)
     fwd = ctypes.c_float(_frame_move["forward"] * hvars.frametime * hvars.MOVESPEED)
-    hvars.c_api.cameraThrust(left, up, fwd)
+    hvars.c_api.CameraThrust(left, up, fwd)
 
 def _debug():
     pass

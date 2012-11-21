@@ -1,3 +1,4 @@
+#include "render.h"
 #include "r_defs.h"
 
 
@@ -9,18 +10,18 @@ drawColumn (const uint8_t *posts, int x, int y)
 	uint8_t *base_dest, *dest;
 	int c;
 
-	base_dest = r_defs.screen + y * r_defs.pitch + x;
+	base_dest = r_vars.screen + y * r_vars.pitch + x;
 
 	while (p->topdelta != 0xff)
 	{
 		pixels = (const uint8_t *)p + 3;
 		c = p->length;
-		dest = base_dest + p->topdelta * r_defs.pitch;
+		dest = base_dest + p->topdelta * r_vars.pitch;
 
 		while (c--)
 		{
 			*dest = *pixels++;
-			dest += r_defs.pitch;
+			dest += r_vars.pitch;
 		}
 
 		p = (const struct r_post_s *)((uint8_t *)p + p->length + 4);
