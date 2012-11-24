@@ -29,10 +29,10 @@ struct r_vars_s
 	float up[3];
 	float forward[3];
 
-//	struct viewplane_s vplanes[4];
-
 	/* the corner-most rays terminating points */
 	float far[4][3];
+
+//	struct viewplane_s vplanes[4];
 };
 
 struct viewplane_s

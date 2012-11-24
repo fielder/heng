@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -O2 -fPIC
+CFLAGS = -Wall -O2 -fPIC -march=native
 LDFLAGS = -lm
 OBJDIR = .
 
@@ -8,6 +8,7 @@ TARGET = $(OBJDIR)/render.so
 OBJS =	$(OBJDIR)/bswap.o \
 	$(OBJDIR)/vec.o \
 	$(OBJDIR)/r_main.o \
+	$(OBJDIR)/r_cast.o \
 	$(OBJDIR)/r_sprite.o
 
 all: $(TARGET)
@@ -26,6 +27,8 @@ $(OBJDIR)/bswap.o: bswap.c
 $(OBJDIR)/vec.o: vec.c
 	$(CC) -c $(CFLAGS) $? -o $@
 $(OBJDIR)/r_main.o: r_main.c
+	$(CC) -c $(CFLAGS) $? -o $@
+$(OBJDIR)/r_cast.o: r_cast.c
 	$(CC) -c $(CFLAGS) $? -o $@
 $(OBJDIR)/r_sprite.o: r_sprite.c
 	$(CC) -c $(CFLAGS) $? -o $@

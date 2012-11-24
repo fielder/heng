@@ -40,7 +40,7 @@ def refresh():
 
     # 2D drawing
     #TODO: ...
-#   hvars.c_api.DrawPalette()
+    hvars.c_api.DrawPalette()
 #   hvars.c_api.DrawLine(50, 50, 100, 200, 4)
 
     # 3D drawing

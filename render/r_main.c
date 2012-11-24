@@ -26,8 +26,6 @@ CameraChanged (void)
 	Vec_Copy (r_vars.xform[1], r_vars.up);
 	Vec_Copy (r_vars.xform[2], r_vars.forward);
 
-	//TODO: setup view planes
-
 	/* Find the screen's corner-most pixel rays in world space.
 	 * Note that screen pixels projected to the back of the view
 	 * frustum are large. So, the center of the pixel will be
@@ -63,6 +61,8 @@ CameraChanged (void)
 		Vec_Transform (cam2world, r_vars.far[i], v);
 		Vec_Add (r_vars.pos, v, r_vars.far[i]);
 	}
+
+	//TODO: setup view planes
 }
 
 
@@ -166,30 +166,6 @@ ClearScreen (void)
 void
 DrawWorld (void)
 {
-#if 0
-	float v[3];
-	int x, z;
-	for (z = 0; z < 16; z++)
-	{
-		for (x = 0; x < 16; x++)
-		{
-			v[0] = x;
-			v[1] = 0.0;
-			v[2] = z;
-			drawPoint3D(v);
-		}
-	}
-	for (x = 0; x < 128; x++)
-	{
-		v[0] = x; v[1] = 0.0; v[2] = 0.0; drawPoint3D(v);
-		v[0] = 0.0; v[1] = x; v[2] = 0.0; drawPoint3D(v);
-		v[0] = 0.0; v[1] = 0.0; v[2] = x; drawPoint3D(v);
-	}
-
-	drawFrustum ();
-
-	drawPoly ();
-#endif
 }
 
 
