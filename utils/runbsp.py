@@ -14,7 +14,6 @@ sidedefs = []
 sectors = []
 
 # part of the BSP process
-b_lines = []
 b_nodes = []
 b_leafs = []
 
@@ -39,11 +38,10 @@ class BLine(object):
 
         v1 = (float(vertexes[linedef["v1"]][0]), float(vertexes[linedef["v1"]][1]))
         v2 = (float(vertexes[linedef["v2"]][0]), float(vertexes[linedef["v2"]][1]))
+        self.verts = (v1, v2)
 
         if is_backwards:
-            self.verts = (v2, v1)
-        else:
-            self.verts = (v1, v2)
+            self.verts = tuple(reversed(self.verts))
 
         dx, dy = self.delta()
         normal = (dy, -dx)
@@ -267,12 +265,16 @@ def _recursiveBSP(lines):
     if frontlines:
         frontidx = _recursiveBSP(frontlines)
     else:
+        print "node chosen with no front space"
+        print _isConvex(lines)
 #FIXME: should this not happen?
         frontidx = 0xffffffff
 
     if backlines:
         backidx = _recursiveBSP(backlines)
     else:
+        print "node chosen with no back space"
+        print _isConvex(lines)
 #FIXME: should this not happen?
         backidx = 0xffffffff
 
@@ -288,17 +290,21 @@ def _recursiveBSP(lines):
 
 
 def _createBLines():
-    global b_lines
+    lines = []
 
-    for ld in linedefs:
-        sidenum0, sidenum1 = ld["sidenum"]
+    for l in linedefs:
+        sidenum0, sidenum1 = l["sidenum"]
 
         if sidenum0 < 0 or sidenum0 >= len(sidedefs):
             raise Exception("bad front sidedef %d" % sidenum0)
-        b_lines.append(BLine(ld))
+        lines.append(BLine(l))
 
+        # create a line running in the opposite direction for 2-sided
+        # linedefs
         if sidenum1 != -1:
-            b_lines.append(BLine(ld, is_backwards=True))
+            lines.append(BLine(l, is_backwards=True))
+
+    return lines
 
 
 def recursiveBSP(objs):
@@ -306,7 +312,6 @@ def recursiveBSP(objs):
     global linedefs
     global sidedefs
     global sectors
-    global b_lines
     global b_nodes
     global b_leafs
     global o_verts
@@ -316,15 +321,12 @@ def recursiveBSP(objs):
     sidedefs = objs["SIDEDEFS"]
     sectors = objs["SECTORS"]
 
-    b_lines = []
     b_nodes = []
     b_leafs = []
 
     o_verts = []
 
-    _createBLines()
-
-    _recursiveBSP(b_lines)
+    _recursiveBSP(_createBLines())
 
     print "%d nodes" % len(b_nodes)
     print "%d leafs" % len(b_leafs)
