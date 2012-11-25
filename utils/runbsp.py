@@ -228,26 +228,29 @@ def _chooseNodeLine(lines):
     by_imbalance_axial = filter(lambda x: x.axial, by_imbalance)
     by_imbalance_nonaxial = filter(lambda x: not x.axial, by_imbalance)
 
-#FIXME: must never choose a node that doesn't divide the space
-#       even if the only choice is non-axial, must use it
-
     best_axial = None
-    if by_imbalance_axial:
-        best_axial = by_imbalance_axial[0]
-        for cp in by_imbalance_axial:
-            if cp.imbalance > IMBALANCE_CUTOFF:
-                break
-            if cp.cross < best_axial.cross:
-                best_axial = cp
+    for cp in by_imbalance_axial:
+        if 0 in [cp.front, cp.back]:
+            # not a valid node if it doesn't divide the space
+            continue
+        if cp.imbalance > IMBALANCE_CUTOFF and best_axial is not None:
+            break
+        if best_axial is None:
+            best_axial = cp
+        elif cp.cross < best_axial.cross:
+            best_axial = cp
 
     best_nonaxial = None
-    if by_imbalance_nonaxial:
-        best_nonaxial = by_imbalance_nonaxial[0]
-        for cp in by_imbalance_nonaxial:
-            if cp.imbalance > IMBALANCE_CUTOFF:
-                break
-            if cp.cross < best_nonaxial.cross:
-                best_nonaxial = cp
+    for cp in by_imbalance_nonaxial:
+        if 0 in [cp.front, cp.back]:
+            # not a valid node if it doesn't divide the space
+            continue
+        if cp.imbalance > IMBALANCE_CUTOFF and best_nonaxial is not None:
+            break
+        if best_nonaxial is None:
+            best_nonaxial = cp
+        elif cp.cross < best_nonaxial.cross:
+            best_nonaxial = cp
 
     if best_axial:
         best = best_axial
@@ -257,19 +260,13 @@ def _chooseNodeLine(lines):
         # shouldn't happen
         raise Exception("no node chosen")
 
-    if _id == 173:
+    if False:
         print best
 
     return lines[best.index]
 
 
-_id = 0
 def _recursiveBSP(lines):
-    global _id
-
-    _id += 1
-    tid = _id
-
     if _isConvex(lines):
         idx = len(b_leafs)
         b_leafs.append(lines)
@@ -291,7 +288,6 @@ def _recursiveBSP(lines):
         frontidx = _recursiveBSP(frontlines)
     else:
         print "========= node chosen with no front space ========="
-        print tid
         print node.verts, len(lines),len(frontlines),len(backlines)
         for l in backlines:
             print l.verts
@@ -306,7 +302,6 @@ def _recursiveBSP(lines):
         backidx = _recursiveBSP(backlines)
     else:
         print "========= node chosen with no back space ========="
-        print tid
         print node.verts, len(lines),len(frontlines),len(backlines)
         for l in frontlines:
             print l.verts
