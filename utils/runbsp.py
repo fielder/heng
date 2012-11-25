@@ -1,15 +1,17 @@
 import math
 import copy
+import collections
+
+#TODO: Create 2 blines for each side of a linedef and put each side
+#      on the proper side of the plane
+#      Might have to tie the 2 sides of a line such that splitting
+#      one side doesn't create a t-junction
 
 # original map objects from the WAD
 vertexes = []
 linedefs = []
 sidedefs = []
 sectors = []
-
-# part of the BSP process
-b_verts = []
-b_lines = []
 
 # output objects
 o_verts = []
@@ -154,7 +156,17 @@ def _countSplits(lines, l):
     return (front, back, on, cross)
 
 
+ChoiseParams = collections.namedtuple("ChoiseParams", ["index", "axial", "front", "back", "on", "cross", "balance"])
+
+#TODO: Probably check against a few different cutoffs; the idea is that
+#      a lower cutoff (gives a better balanced tree) might be worth a
+#      few extra splits.
+IMBALANCE_CUTOFF = 0.15
+
 def _chooseNodeLine(lines):
+    len_ = float(len(lines))
+
+    # sort lines by axial cases first
     axial = []
     nonaxial = []
     for l in lines:
@@ -166,18 +178,47 @@ def _chooseNodeLine(lines):
 
     counts = []
 
+    # find where each line lies with respect to each other
     for idx, l in enumerate(lines):
         front, back, on, cross = _countSplits(lines, l)
-        c = (idx, front, back, on, cross, abs(front - back) / float(len(lines)))
-        counts.append(c)
-    print sorted(counts, key=lambda x: x[5])
+        counts.append( ChoiseParams(idx, l.isAxial(), front, back, on, cross, abs(front - back) / len_) )
 
-    # choose an axial line with the least splits
-    # if there isn't an axial, choose the non-axial with least splits
-    # choose the one that makes the most balanced tree
-    #...
+    # sort the candidates by how well they divide the space; ideally
+    # we would get a line that divides the space exactly in half
+    by_balance = sorted(counts, key=lambda x: x.balance)
+    by_balance_axial = filter(lambda x: x.axial, by_balance)
+    by_balance_nonaxial = filter(lambda x: not x.axial, by_balance)
 
-    return None
+    best_axial = None
+    if by_balance_axial:
+        best_axial = by_balance_axial[0]
+        for cp in by_balance_axial:
+            if cp.balance > IMBALANCE_CUTOFF:
+                break
+            if cp.cross < best_axial.cross:
+                best_axial = cp
+
+    best_nonaxial = None
+    if by_balance_nonaxial:
+        best_nonaxial = by_balance_nonaxial[0]
+        for cp in by_balance_nonaxial:
+            if cp.balance > IMBALANCE_CUTOFF:
+                break
+            if cp.cross < best_nonaxial.cross:
+                best_nonaxial = cp
+
+    if best_axial:
+        best = best_axial
+    elif best_nonaxial:
+        best = best_nonaxial
+    else:
+        # shouldn't happen
+        raise Exception("no node chosen")
+
+    if False:
+        print best
+
+    return lines[best.index]
 
 
 def _recursiveBSP(lines):
@@ -199,18 +240,12 @@ def recursiveBSP(objs):
     global linedefs
     global sidedefs
     global sectors
-    global b_lines
-    global b_verts
     global o_verts
 
     vertexes = objs["VERTEXES"]
     linedefs = objs["LINEDEFS"]
     sidedefs = objs["SIDEDEFS"]
     sectors = objs["SECTORS"]
-    b_lines = []
-    b_verts = []
     o_verts = []
 
-#   b_verts = [(float(x), float(y)) for x, y in vertexes]
-#   b_lines = [BLine(l) for l in linedefs]
     _recursiveBSP([BLine(l, vertexes) for l in linedefs])
