@@ -54,45 +54,76 @@ class BLine(object):
     def setV2(self, v):
         self.verts = (self.verts[0], v)
 
-    def lineSide(self, other):
-        d1 = dot(self.normal, other.verts[0]) - self.dist
-        d2 = dot(self.normal, other.verts[1]) - self.dist
+    def pointSide(self, p):
+        d = dot(self.normal, p) - self.dist
 
-        if math.fabs(d1) < SIDE_EPSILON and math.fabs(d2) < SIDE_EPSILON:
+        if math.fabs(d) < SIDE_EPSILON:
             side = SIDE_ON
-        elif d1 < SIDE_EPSILON and d2 < SIDE_EPSILON:
+        elif d < 0:
             side = SIDE_BACK
-        elif d1 > -SIDE_EPSILON and d2 > -SIDE_EPSILON:
+        elif d > 0:
             side = SIDE_FRONT
+        else:
+            raise Exception("shouldn't happen")
+
+        return side
+
+    def pointsSides(self, p1, p2):
+        return (self.pointSide(p1), self.pointSide(p2))
+
+    def lineSide(self, other):
+        s1, s2 = self.pointsSides(other.verts[0], other.verts[1])
+
+        if s1 == s2:
+            side = s1
+        elif s1 == SIDE_ON:
+            side = s2
+        elif s2 == SIDE_ON:
+            side = s1
         else:
             side = SIDE_CROSS
 
         return side
 
-    def splitLine(self, other):
+    def _splitCrossingLine(self, other):
+        """
+        It's assumed other is known to cross.
+        """
+
         d1 = dot(self.normal, other.verts[0]) - self.dist
         d2 = dot(self.normal, other.verts[1]) - self.dist
 
-        if math.fabs(d1) < SIDE_EPSILON and math.fabs(d2) < SIDE_EPSILON:
-            front = None
-            back = None
-        elif d1 < SIDE_EPSILON and d2 < SIDE_EPSILON:
-            front = None
-            back = other
-        elif d1 > -SIDE_EPSILON and d2 > -SIDE_EPSILON:
+        frac = d1 / (d1 - d2)
+        mid_x = self.verts[0][0] + frac * (self.verts[1][0] - self.verts[0][0]);
+        mid_y = self.verts[0][1] + frac * (self.verts[1][1] - self.verts[0][1]);
+        mid = (mid_x, mid_y)
+
+        front = copy.copy(self)
+        back = copy.copy(self)
+
+        if d1 < 0:
+            back.setV2(mid)
+            front.setV1(mid)
+        else:
+            back.setV1(mid)
+            front.setV2(mid)
+
+        return (front, back)
+
+    def splitLine(self, other):
+        side = self.lineSide(other)
+
+        if side == SIDE_FRONT:
             front = other
             back = None
+        elif side == SIDE_BACK:
+            front = None
+            back = other
+        elif side == SIDE_ON:
+            front = None
+            back = None
         else:
-            frac = d1 / (d1 - d2)
-            mid_x = self.verts[0][0] + frac * (self.verts[1][0] - self.verts[0][0]);
-            mid_y = self.verts[0][1] + frac * (self.verts[1][1] - self.verts[0][1]);
-            mid = (mid_x, mid_y)
-
-            front = copy.copy(self)
-            back = copy.copy(self)
-
-#           front.setV1(mid)
-#           back.setV2(mid)
+            front, back = self._splitCrossingLine(other)
 
         return (front, back)
 
@@ -132,9 +163,6 @@ def _chooseNodeLine(lines):
 
 
 def _recursiveBSP(lines):
-    if True:
-        print lines[0].splitLine(lines[1])
-
     if _isConvex(lines):
         pass
     else:
