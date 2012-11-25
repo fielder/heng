@@ -116,4 +116,7 @@ if __name__ == "__main__":
         objs["SECTORS"] = _parseSECTORS(w.readLumpFromOffset("SECTORS", start))
         print "%d SECTORS" % len(objs["SECTORS"])
 
+#       print "%d NODES" % (len(w.readLumpFromOffset("NODES", start)) / 28)
+#       print "%d SSECTORS" % (len(w.readLumpFromOffset("SSECTORS", start)) / 4)
+
         runbsp.recursiveBSP(objs)

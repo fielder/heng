@@ -13,9 +13,13 @@ linedefs = []
 sidedefs = []
 sectors = []
 
+# part of the BSP process
+b_lines = []
+b_nodes = []
+b_leafs = []
+
 # output objects
 o_verts = []
-
 
 SIDE_EPSILON = 0.02
 
@@ -30,13 +34,16 @@ def dot(a, b):
 
 
 class BLine(object):
-
-    def __init__(self, linedef, vertexes):
+    def __init__(self, linedef, is_backwards=False):
         self.linedef = linedef
 
         v1 = (float(vertexes[linedef["v1"]][0]), float(vertexes[linedef["v1"]][1]))
         v2 = (float(vertexes[linedef["v2"]][0]), float(vertexes[linedef["v2"]][1]))
-        self.verts = (v1, v2)
+
+        if is_backwards:
+            self.verts = (v2, v1)
+        else:
+            self.verts = (v1, v2)
 
         dx, dy = self.delta()
         normal = (dy, -dx)
@@ -238,16 +245,60 @@ def _chooseNodeLine(lines):
 
 
 def _recursiveBSP(lines):
-    if True:
-        pass
+#FIXME: still must add colinear lines to the correct half-space
 
     if _isConvex(lines):
-        #TODO: emit a leaf
-        pass
+        idx = len(b_leafs)
+        b_leafs.append(lines)
+        return idx | 0x80000000
+
+    node = _chooseNodeLine(lines)
+    lines.remove(node)
+
+    frontlines = []
+    backlines = []
+    for l in lines:
+        f, b = node.splitLine(l)
+        if f:
+            frontlines.append(f)
+        if b:
+            backlines.append(b)
+
+    if frontlines:
+        frontidx = _recursiveBSP(frontlines)
     else:
-        node = _chooseNodeLine(lines)
-        front = []
-        back = []
+#FIXME: should this not happen?
+        frontidx = 0xffffffff
+
+    if backlines:
+        backidx = _recursiveBSP(backlines)
+    else:
+#FIXME: should this not happen?
+        backidx = 0xffffffff
+
+    n = {}
+    n["node"] = node
+    n["front"] = frontidx
+    n["back"] = backidx
+
+    idx = len(b_nodes)
+    b_nodes.append(n)
+
+    return idx
+
+
+def _createBLines():
+    global b_lines
+
+    for ld in linedefs:
+        sidenum0, sidenum1 = ld["sidenum"]
+
+        if sidenum0 < 0 or sidenum0 >= len(sidedefs):
+            raise Exception("bad front sidedef %d" % sidenum0)
+        b_lines.append(BLine(ld))
+
+        if sidenum1 != -1:
+            b_lines.append(BLine(ld, is_backwards=True))
 
 
 def recursiveBSP(objs):
@@ -255,12 +306,25 @@ def recursiveBSP(objs):
     global linedefs
     global sidedefs
     global sectors
+    global b_lines
+    global b_nodes
+    global b_leafs
     global o_verts
 
     vertexes = objs["VERTEXES"]
     linedefs = objs["LINEDEFS"]
     sidedefs = objs["SIDEDEFS"]
     sectors = objs["SECTORS"]
+
+    b_lines = []
+    b_nodes = []
+    b_leafs = []
+
     o_verts = []
 
-    _recursiveBSP([BLine(l, vertexes) for l in linedefs])
+    _createBLines()
+
+    _recursiveBSP(b_lines)
+
+    print "%d nodes" % len(b_nodes)
+    print "%d leafs" % len(b_leafs)
