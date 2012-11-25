@@ -2,6 +2,11 @@ import math
 import copy
 import collections
 
+#FIXME: Probbaly have to revisit the side code; a line *on* another line
+#       will have a side; depends on where the normal faces. So, a line
+#       must lie either on the front or back of another line. There is no
+#       "on" case.
+
 #TODO: Create 2 blines for each side of a linedef and put each side
 #      on the proper side of the plane
 #      Might have to tie the 2 sides of a line such that splitting
@@ -35,12 +40,13 @@ def dot(a, b):
 class BLine(object):
     def __init__(self, linedef, is_backwards=False):
         self.linedef = linedef
+        self.is_backwards = is_backwards
 
         v1 = (float(vertexes[linedef["v1"]][0]), float(vertexes[linedef["v1"]][1]))
         v2 = (float(vertexes[linedef["v2"]][0]), float(vertexes[linedef["v2"]][1]))
         self.verts = (v1, v2)
 
-        if is_backwards:
+        if self.is_backwards:
             self.verts = tuple(reversed(self.verts))
 
         dx, dy = self.delta()
@@ -76,7 +82,18 @@ class BLine(object):
         s1, s2 = self.pointsSides( (other.verts[0], other.verts[1]) )
 
         if s1 == s2:
-            side = s1
+            if s1 == SIDE_ON:
+                # colinear lines; the side is determined by which way
+                # the normals face
+                x = other.verts[0][0] + other.normal[0] * 8.0
+                y = other.verts[0][1] + other.normal[1] * 8.0
+                side = self.pointSide((x, y))
+                if side == SIDE_ON:
+                    # shouldn't happen
+                    raise Exception("failed finding colinear side")
+            else:
+                # both on one side
+                side = s1
         elif s1 == SIDE_ON:
             side = s2
         elif s2 == SIDE_ON:
@@ -137,8 +154,7 @@ class BLine(object):
             front = None
             back = other
         elif side == SIDE_ON:
-            front = None
-            back = None
+            raise Exception("lineSide() returned ON")
         else:
             front, back = self._splitCrossingLine(other)
 
@@ -171,13 +187,12 @@ def _countSplits(lines, l):
 
     front = sides.count(SIDE_FRONT)
     back = sides.count(SIDE_BACK)
-    on = sides.count(SIDE_ON)
     cross = sides.count(SIDE_CROSS)
 
-    return (front, back, on, cross)
+    return (front, back, cross)
 
 
-ChoiseParams = collections.namedtuple("ChoiseParams", ["index", "axial", "front", "back", "on", "cross", "balance"])
+ChoiseParams = collections.namedtuple("ChoiseParams", ["index", "axial", "front", "back", "cross", "imbalance"])
 
 #TODO: Probably check against a few different cutoffs; the idea is that
 #      a lower cutoff (gives a better balanced tree) might be worth a
@@ -201,29 +216,29 @@ def _chooseNodeLine(lines):
 
     # find where each line lies with respect to each other
     for idx, l in enumerate(lines):
-        front, back, on, cross = _countSplits(lines, l)
-        counts.append( ChoiseParams(idx, l.isAxial(), front, back, on, cross, abs(front - back) / len_) )
+        front, back, cross = _countSplits(lines, l)
+        counts.append( ChoiseParams(idx, l.isAxial(), front, back, cross, abs(front - back) / len_) )
 
     # sort the candidates by how well they divide the space; ideally
     # we would get a line that divides the space exactly in half
-    by_balance = sorted(counts, key=lambda x: x.balance)
-    by_balance_axial = filter(lambda x: x.axial, by_balance)
-    by_balance_nonaxial = filter(lambda x: not x.axial, by_balance)
+    by_imbalance = sorted(counts, key=lambda x: x.imbalance)
+    by_imbalance_axial = filter(lambda x: x.axial, by_imbalance)
+    by_imbalance_nonaxial = filter(lambda x: not x.axial, by_imbalance)
 
     best_axial = None
-    if by_balance_axial:
-        best_axial = by_balance_axial[0]
-        for cp in by_balance_axial:
-            if cp.balance > IMBALANCE_CUTOFF:
+    if by_imbalance_axial:
+        best_axial = by_imbalance_axial[0]
+        for cp in by_imbalance_axial:
+            if cp.imbalance > IMBALANCE_CUTOFF:
                 break
             if cp.cross < best_axial.cross:
                 best_axial = cp
 
     best_nonaxial = None
-    if by_balance_nonaxial:
-        best_nonaxial = by_balance_nonaxial[0]
-        for cp in by_balance_nonaxial:
-            if cp.balance > IMBALANCE_CUTOFF:
+    if by_imbalance_nonaxial:
+        best_nonaxial = by_imbalance_nonaxial[0]
+        for cp in by_imbalance_nonaxial:
+            if cp.imbalance > IMBALANCE_CUTOFF:
                 break
             if cp.cross < best_nonaxial.cross:
                 best_nonaxial = cp
@@ -243,8 +258,6 @@ def _chooseNodeLine(lines):
 
 
 def _recursiveBSP(lines):
-#FIXME: still must add colinear lines to the correct half-space
-
     if _isConvex(lines):
         idx = len(b_leafs)
         b_leafs.append(lines)
@@ -266,7 +279,7 @@ def _recursiveBSP(lines):
         frontidx = _recursiveBSP(frontlines)
     else:
         print "node chosen with no front space"
-        print _isConvex(lines)
+#       print _isConvex(lines)
 #FIXME: should this not happen?
         frontidx = 0xffffffff
 
@@ -274,7 +287,7 @@ def _recursiveBSP(lines):
         backidx = _recursiveBSP(backlines)
     else:
         print "node chosen with no back space"
-        print _isConvex(lines)
+#       print _isConvex(lines)
 #FIXME: should this not happen?
         backidx = 0xffffffff
 
