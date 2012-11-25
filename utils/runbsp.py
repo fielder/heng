@@ -185,8 +185,19 @@ def _isConvex(lines):
     return True
 
 
+ChoiseParams = collections.namedtuple("ChoiseParams", ["index", "axial", "front", "back", "cross", "imbalance"])
+
+#TODO: Probably check against a few different cutoffs; the idea is that
+#      a lower cutoff (gives a better balanced tree) might be worth a
+#      few extra splits.
+IMBALANCE_CUTOFF = 0.15
+
+
 def _countSplits(lines, l):
-    sides = [l.lineSide(ll) for ll in lines]
+    sides = []
+    for ll in lines:
+        if ll != l:
+            sides.append(l.lineSide(ll))
 
     front = sides.count(SIDE_FRONT)
     back = sides.count(SIDE_BACK)
@@ -194,13 +205,6 @@ def _countSplits(lines, l):
 
     return (front, back, cross)
 
-
-ChoiseParams = collections.namedtuple("ChoiseParams", ["index", "axial", "front", "back", "cross", "imbalance"])
-
-#TODO: Probably check against a few different cutoffs; the idea is that
-#      a lower cutoff (gives a better balanced tree) might be worth a
-#      few extra splits.
-IMBALANCE_CUTOFF = 0.15
 
 def _chooseNodeLine(lines):
     len_ = float(len(lines))
@@ -284,38 +288,15 @@ def _recursiveBSP(lines):
         if b:
             backlines.append(b)
 
-    if frontlines:
-        frontidx = _recursiveBSP(frontlines)
-    else:
-        print "========= node chosen with no front space ========="
-        print node.verts, len(lines),len(frontlines),len(backlines)
-        for l in backlines:
-            print l.verts
-        for l in lines:
-            if l not in backlines:
-                print "missing", l.verts
-        print "=================================================="
-#FIXME: should this not happen?
-        frontidx = 0xffffffff
-
-    if backlines:
-        backidx = _recursiveBSP(backlines)
-    else:
-        print "========= node chosen with no back space ========="
-        print node.verts, len(lines),len(frontlines),len(backlines)
-        for l in frontlines:
-            print l.verts
-        for l in lines:
-            if l not in frontlines:
-                print "missing", l.verts
-        print "=================================================="
-#FIXME: should this not happen?
-        backidx = 0xffffffff
+    if not frontlines:
+        raise Exception("node chosen with no front space")
+    if not backlines:
+        raise Exception("node chosen with no back space")
 
     n = {}
     n["node"] = node
-    n["front"] = frontidx
-    n["back"] = backidx
+    n["front"] = _recursiveBSP(frontlines)
+    n["back"] = _recursiveBSP(backlines)
 
     idx = len(b_nodes)
     b_nodes.append(n)
