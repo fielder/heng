@@ -79,18 +79,19 @@ class BLine(object):
         return [self.pointSide(p) for p in points]
 
     def lineSide(self, other):
+        """
+        Find which side other lies on. Note if the other line is
+        colinear, we use the other's normal to determine whether
+        it's on our front or back side.
+        """
+
         s1, s2 = self.pointsSides( (other.verts[0], other.verts[1]) )
 
         if s1 == s2:
             if s1 == SIDE_ON:
-                # colinear lines; the side is determined by which way
-                # the normals face
                 x = other.verts[0][0] + other.normal[0] * 8.0
                 y = other.verts[0][1] + other.normal[1] * 8.0
                 side = self.pointSide((x, y))
-                if side == SIDE_ON:
-                    # shouldn't happen
-                    raise Exception("failed finding colinear side")
             else:
                 # both on one side
                 side = s1
@@ -100,6 +101,10 @@ class BLine(object):
             side = s1
         else:
             side = SIDE_CROSS
+
+        if side == SIDE_ON:
+            # shouldn't happen
+            raise Exception("lineSide() gave ON")
 
         return side
 
@@ -153,8 +158,6 @@ class BLine(object):
         elif side == SIDE_BACK:
             front = None
             back = other
-        elif side == SIDE_ON:
-            raise Exception("lineSide() returned ON")
         else:
             front, back = self._splitCrossingLine(other)
 
@@ -225,6 +228,9 @@ def _chooseNodeLine(lines):
     by_imbalance_axial = filter(lambda x: x.axial, by_imbalance)
     by_imbalance_nonaxial = filter(lambda x: not x.axial, by_imbalance)
 
+#FIXME: must never choose a node that doesn't divide the space
+#       even if the only choice is non-axial, must use it
+
     best_axial = None
     if by_imbalance_axial:
         best_axial = by_imbalance_axial[0]
@@ -251,13 +257,19 @@ def _chooseNodeLine(lines):
         # shouldn't happen
         raise Exception("no node chosen")
 
-    if False:
+    if _id == 173:
         print best
 
     return lines[best.index]
 
 
+_id = 0
 def _recursiveBSP(lines):
+    global _id
+
+    _id += 1
+    tid = _id
+
     if _isConvex(lines):
         idx = len(b_leafs)
         b_leafs.append(lines)
@@ -278,16 +290,30 @@ def _recursiveBSP(lines):
     if frontlines:
         frontidx = _recursiveBSP(frontlines)
     else:
-        print "node chosen with no front space"
-#       print _isConvex(lines)
+        print "========= node chosen with no front space ========="
+        print tid
+        print node.verts, len(lines),len(frontlines),len(backlines)
+        for l in backlines:
+            print l.verts
+        for l in lines:
+            if l not in backlines:
+                print "missing", l.verts
+        print "=================================================="
 #FIXME: should this not happen?
         frontidx = 0xffffffff
 
     if backlines:
         backidx = _recursiveBSP(backlines)
     else:
-        print "node chosen with no back space"
-#       print _isConvex(lines)
+        print "========= node chosen with no back space ========="
+        print tid
+        print node.verts, len(lines),len(frontlines),len(backlines)
+        for l in frontlines:
+            print l.verts
+        for l in lines:
+            if l not in frontlines:
+                print "missing", l.verts
+        print "=================================================="
 #FIXME: should this not happen?
         backidx = 0xffffffff
 
