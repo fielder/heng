@@ -64,11 +64,11 @@ class BLine(object):
 
         return side
 
-    def pointsSides(self, p1, p2):
-        return (self.pointSide(p1), self.pointSide(p2))
+    def pointsSides(self, points):
+        return [self.pointSide(p) for p in points]
 
     def lineSide(self, other):
-        s1, s2 = self.pointsSides(other.verts[0], other.verts[1])
+        s1, s2 = self.pointsSides( (other.verts[0], other.verts[1]) )
 
         if s1 == s2:
             side = s1
@@ -141,8 +141,24 @@ class BLine(object):
 
 
 def _isConvex(lines):
-    #...
-    return False
+    """
+    Check if a set of lines form a convex space. If 2 separate vertices
+    lay on opposite sides of a line, it's non-convex.
+    """
+
+    for l in lines:
+        sides = set()
+
+        for other in lines:
+            if l == other:
+                continue
+
+            sides.update(l.pointsSides(other.verts))
+
+            if SIDE_FRONT in sides and SIDE_BACK in sides:
+                return False
+
+    return True
 
 
 def _countSplits(lines, l):
@@ -223,7 +239,6 @@ def _chooseNodeLine(lines):
 
 def _recursiveBSP(lines):
     if True:
-#       print _countSplits(lines, lines[200])
         pass
 
     if _isConvex(lines):
