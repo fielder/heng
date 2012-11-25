@@ -48,12 +48,6 @@ class BLine(object):
     def isAxial(self):
         return math.fabs(self.normal[0]) == 1.0 or math.fabs(self.normal[1]) == 1.0
 
-    def setV1(self, v):
-        self.verts = (v, self.verts[1])
-
-    def setV2(self, v):
-        self.verts = (self.verts[0], v)
-
     def pointSide(self, p):
         d = dot(self.normal, p) - self.dist
 
@@ -85,6 +79,22 @@ class BLine(object):
 
         return side
 
+    def _updateV1(self, v):
+        """
+        Note it's assumed the new vertex is colinear with the old line.
+        We don't update our normal.
+        """
+
+        self.verts = (v, self.verts[1])
+
+    def _updateV2(self, v):
+        """
+        Note it's assumed the new vertex is colinear with the old line.
+        We don't update our normal.
+        """
+
+        self.verts = (self.verts[0], v)
+
     def _splitCrossingLine(self, other):
         """
         It's assumed other is known to cross.
@@ -102,11 +112,11 @@ class BLine(object):
         back = copy.copy(self)
 
         if d1 < 0:
-            back.setV2(mid)
-            front.setV1(mid)
+            back._updateV2(mid)
+            front._updateV1(mid)
         else:
-            back.setV1(mid)
-            front.setV2(mid)
+            back._updateV1(mid)
+            front._updateV2(mid)
 
         return (front, back)
 
@@ -133,29 +143,37 @@ def _isConvex(lines):
     return False
 
 
-def _countSplits(lines, idx):
-    # count the number of lines split
-    # and count how many lines/pieces lie on both sides
-    pass
-    # or return the number of lines on either side, and
-    # return the number of splits; it's assumed the caller
-    # can add the splits to the sides to get a total count
-    # no, will fail for colinear lines??
-    return (numfront, numback, numsplit)
+def _countSplits(lines, l):
+    sides = [l.lineSide(ll) for ll in lines]
+
+    front = sides.count(SIDE_FRONT)
+    back = sides.count(SIDE_BACK)
+    on = sides.count(SIDE_ON)
+    cross = sides.count(SIDE_CROSS)
+
+    return (front, back, on, cross)
 
 
 def _chooseNodeLine(lines):
     axial = []
     nonaxial = []
-
     for l in lines:
         if l.isAxial():
             axial.append(l)
         else:
             nonaxial.append(l)
+    lines = axial + nonaxial
+
+    counts = []
+
+    for idx, l in enumerate(lines):
+        front, back, on, cross = _countSplits(lines, l)
+        c = (idx, front, back, on, cross, abs(front - back) / float(len(lines)))
+        counts.append(c)
+    print sorted(counts, key=lambda x: x[5])
 
     # choose an axial line with the least splits
-    # if there isn't an axial, choose the one with least splits
+    # if there isn't an axial, choose the non-axial with least splits
     # choose the one that makes the most balanced tree
     #...
 
@@ -163,10 +181,17 @@ def _chooseNodeLine(lines):
 
 
 def _recursiveBSP(lines):
+    if True:
+#       print _countSplits(lines, lines[200])
+        pass
+
     if _isConvex(lines):
+        #TODO: emit a leaf
         pass
     else:
         node = _chooseNodeLine(lines)
+        front = []
+        back = []
 
 
 def recursiveBSP(objs):
