@@ -2,15 +2,7 @@ import math
 import copy
 import collections
 
-#FIXME: Probbaly have to revisit the side code; a line *on* another line
-#       will have a side; depends on where the normal faces. So, a line
-#       must lie either on the front or back of another line. There is no
-#       "on" case.
-
-#TODO: Create 2 blines for each side of a linedef and put each side
-#      on the proper side of the plane
-#      Might have to tie the 2 sides of a line such that splitting
-#      one side doesn't create a t-junction
+#TODO: fix up t-junctions for 2-sided lines, where only one gets split
 
 # original map objects from the WAD
 vertexes = []
@@ -164,6 +156,8 @@ class BLine(object):
         return (front, back)
 
 
+#FIXME: Will fail for cases where all lines are colinear, but lines
+#       lie on both sides of one. Is this case even possible?
 def _isConvex(lines):
     """
     Check if a set of lines form a convex space. If 2 separate vertices
@@ -234,7 +228,7 @@ def _chooseNodeLine(lines):
 
     best_axial = None
     for cp in by_imbalance_axial:
-        if 0 in [cp.front, cp.back]:
+        if cp.cross == 0 and 0 in [cp.front, cp.back]:
             # not a valid node if it doesn't divide the space
             continue
         if cp.imbalance > IMBALANCE_CUTOFF and best_axial is not None:
@@ -246,7 +240,7 @@ def _chooseNodeLine(lines):
 
     best_nonaxial = None
     for cp in by_imbalance_nonaxial:
-        if 0 in [cp.front, cp.back]:
+        if cp.cross == 0 and 0 in [cp.front, cp.back]:
             # not a valid node if it doesn't divide the space
             continue
         if cp.imbalance > IMBALANCE_CUTOFF and best_nonaxial is not None:
