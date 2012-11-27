@@ -226,9 +226,9 @@ def _chooseNodeLine(lines):
     # find where each line lies with respect to each other
     for idx, l in enumerate(lines):
         front, back, cross = _countSplits(lines, l)
-#FIXME: need to sub 1 from len_ because front & back don't include the line its self
-# note div-by-zero; but shouldn't happen
-        counts.append( ChoiseParams(idx, l.isAxial(), front, back, cross, abs(front - back) / len_) )
+        # note we subtract 1 from the lines length as the choice node isn't
+        # included in the side counts
+        counts.append( ChoiseParams(idx, l.isAxial(), front, back, cross, abs(front - back) / (len_ - 1)) )
 
     # sort the candidates by how well they divide the space; ideally
     # we would get a line that divides the space exactly in half
