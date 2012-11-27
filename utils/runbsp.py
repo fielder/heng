@@ -99,24 +99,6 @@ class Line(object):
 
         return side
 
-#TODO: get rid of this func, just put the line where it's called
-    def _updateV1(self, v):
-        """
-        Note it's assumed the new vertex is colinear with the old line.
-        We don't update our normal.
-        """
-
-        self.verts = (v, self.verts[1])
-
-#TODO: get rid of this func, just put the line where it's called
-    def _updateV2(self, v):
-        """
-        Note it's assumed the new vertex is colinear with the old line.
-        We don't update our normal.
-        """
-
-        self.verts = (self.verts[0], v)
-
     def _splitCrossingLine(self, other):
         """
         It's assumed other is known to cross.
@@ -134,11 +116,11 @@ class Line(object):
         back = copy.copy(self)
 
         if d1 < 0:
-            back._updateV2(mid)
-            front._updateV1(mid)
+            back.verts = (back.verts[0], mid)
+            front.verts = (mid, front.verts[1])
         else:
-            back._updateV1(mid)
-            front._updateV2(mid)
+            back.verts = (mid, back.verts[1])
+            front.verts = (front.verts[0], mid)
 
         return (front, back)
 
