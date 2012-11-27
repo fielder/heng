@@ -271,7 +271,7 @@ def _chooseNodeLine(lines):
     if False:
         print best
 
-    return lines[best.index]
+    return Line(lines[best.index].verts[0], lines[best.index].verts[1])
 
 #FIXME: Convexity test will probably have to change to properly handle
 #       colinar lines creating a "non-convex" space
@@ -285,14 +285,9 @@ def _recursiveBSP(lines):
         b_leafs.append(lines)
         return idx | 0x80000000
 
-#FIXME: *don't remove the line*; just use it as a splitter
-#       it will always end up on its front side
-#       maybe just save off the plane, or make a copy as it's used for
-#       only geometry testing and nothing else
-    node = _chooseNodeLine(lines)
-    lines.remove(node)
+    nodeline = _chooseNodeLine(lines)
 
-    frontlines, backlines = node.splitLines(lines)
+    frontlines, backlines = nodeline.splitLines(lines)
 
     if not frontlines:
         raise Exception("node chosen with no front space")
@@ -300,14 +295,11 @@ def _recursiveBSP(lines):
         raise Exception("node chosen with no back space")
 
     idx = len(b_nodes)
-    b_nodes.append(None)
+    b_nodes.append({})
 
-    n = {}
-    n["node"] = node
-    n["front"] = _recursiveBSP(frontlines)
-    n["back"] = _recursiveBSP(backlines)
-
-    b_nodes[idx] = n
+    b_nodes[idx]["node"] = nodeline
+    b_nodes[idx]["front"] = _recursiveBSP(frontlines)
+    b_nodes[idx]["back"] = _recursiveBSP(backlines)
 
     return idx
 
