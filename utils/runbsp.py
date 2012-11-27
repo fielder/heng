@@ -3,6 +3,13 @@ import copy
 import collections
 
 #TODO: fix up t-junctions for 2-sided lines, where only one gets split
+#TODO: print some counters
+#     - avg imbalance
+#     - best imbalance, worst imbalance
+#     - num splits
+#     - average node splits
+#     - best splits, worst splits
+#     - num axial nodes, num non-axial
 
 # original map objects from the WAD
 vertexes = []
@@ -30,15 +37,17 @@ def dot(a, b):
 
 
 class BLine(object):
-    def __init__(self, linedef, is_backwards=False):
+#TODO: split off geometry-only stuff into a separate class and have linedef-related
+#      stuff in a subclass
+    def __init__(self, linedef, is_backside=False):
         self.linedef = linedef
-        self.is_backwards = is_backwards
+        self.is_backside = is_backside
 
         v1 = (float(vertexes[linedef["v1"]][0]), float(vertexes[linedef["v1"]][1]))
         v2 = (float(vertexes[linedef["v2"]][0]), float(vertexes[linedef["v2"]][1]))
         self.verts = (v1, v2)
 
-        if self.is_backwards:
+        if self.is_backside:
             self.verts = tuple(reversed(self.verts))
 
         dx, dy = self.delta()
@@ -155,6 +164,17 @@ class BLine(object):
 
         return (front, back)
 
+    def splitLines(self, lines):
+        front = []
+        back = []
+        for l in lines:
+            f, b = self.splitLine(l)
+            if f:
+                front.append(f)
+            if b:
+                back.append(b)
+        return (front, back)
+
 
 #FIXME: Will fail for cases where all lines are colinear, but lines
 #       lie on both sides of one. Is this case even possible?
@@ -218,6 +238,8 @@ def _chooseNodeLine(lines):
     # find where each line lies with respect to each other
     for idx, l in enumerate(lines):
         front, back, cross = _countSplits(lines, l)
+#FIXME: need to sub 1 from len_ because front & back don't include the line its self
+# note div-by-zero; but shouldn't happen
         counts.append( ChoiseParams(idx, l.isAxial(), front, back, cross, abs(front - back) / len_) )
 
     # sort the candidates by how well they divide the space; ideally
@@ -263,6 +285,11 @@ def _chooseNodeLine(lines):
 
     return lines[best.index]
 
+#FIXME: Convexity test will probably have to change to properly handle
+#       colinar lines creating a "non-convex" space
+#       If this is done, we'll use _countSplits(). We should reuse the
+#       results of this over to the node chooser so it's not done
+#       twice.
 
 def _recursiveBSP(lines):
     if _isConvex(lines):
@@ -270,30 +297,29 @@ def _recursiveBSP(lines):
         b_leafs.append(lines)
         return idx | 0x80000000
 
+#FIXME: *don't remove the line*; just use it as a splitter
+#       it will always end up on its front side
+#       maybe just save off the plane, or make a copy as it's used for
+#       only geometry testing and nothing else
     node = _chooseNodeLine(lines)
     lines.remove(node)
 
-    frontlines = []
-    backlines = []
-    for l in lines:
-        f, b = node.splitLine(l)
-        if f:
-            frontlines.append(f)
-        if b:
-            backlines.append(b)
+    frontlines, backlines = node.splitLines(lines)
 
     if not frontlines:
         raise Exception("node chosen with no front space")
     if not backlines:
         raise Exception("node chosen with no back space")
 
+    idx = len(b_nodes)
+    b_nodes.append(None)
+
     n = {}
     n["node"] = node
     n["front"] = _recursiveBSP(frontlines)
     n["back"] = _recursiveBSP(backlines)
 
-    idx = len(b_nodes)
-    b_nodes.append(n)
+    b_nodes[idx] = n
 
     return idx
 
@@ -311,7 +337,7 @@ def _createBLines():
         # create a line running in the opposite direction for 2-sided
         # linedefs
         if sidenum1 != -1:
-            lines.append(BLine(l, is_backwards=True))
+            lines.append(BLine(l, is_backside=True))
 
     return lines
 
