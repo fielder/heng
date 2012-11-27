@@ -36,19 +36,9 @@ def dot(a, b):
     return a[0] * b[0] + a[1] * b[1]
 
 
-class BLine(object):
-#TODO: split off geometry-only stuff into a separate class and have linedef-related
-#      stuff in a subclass
-    def __init__(self, linedef, is_backside=False):
-        self.linedef = linedef
-        self.is_backside = is_backside
-
-        v1 = (float(vertexes[linedef["v1"]][0]), float(vertexes[linedef["v1"]][1]))
-        v2 = (float(vertexes[linedef["v2"]][0]), float(vertexes[linedef["v2"]][1]))
+class Line(object):
+    def __init__(self, v1, v2):
         self.verts = (v1, v2)
-
-        if self.is_backside:
-            self.verts = tuple(reversed(self.verts))
 
         dx, dy = self.delta()
         normal = (dy, -dx)
@@ -109,6 +99,7 @@ class BLine(object):
 
         return side
 
+#TODO: get rid of this func, just put the line where it's called
     def _updateV1(self, v):
         """
         Note it's assumed the new vertex is colinear with the old line.
@@ -117,6 +108,7 @@ class BLine(object):
 
         self.verts = (v, self.verts[1])
 
+#TODO: get rid of this func, just put the line where it's called
     def _updateV2(self, v):
         """
         Note it's assumed the new vertex is colinear with the old line.
@@ -174,6 +166,20 @@ class BLine(object):
             if b:
                 back.append(b)
         return (front, back)
+
+
+class BLine(Line):
+    def __init__(self, linedef, is_backside=False):
+        self.linedef = linedef
+        self.is_backside = is_backside
+
+        v1 = (float(vertexes[linedef["v1"]][0]), float(vertexes[linedef["v1"]][1]))
+        v2 = (float(vertexes[linedef["v2"]][0]), float(vertexes[linedef["v2"]][1]))
+
+        if self.is_backside:
+            v1, v2 = v2, v1
+
+        super(BLine, self).__init__(v1, v2)
 
 
 #FIXME: Will fail for cases where all lines are colinear, but lines
