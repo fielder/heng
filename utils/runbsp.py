@@ -3,13 +3,6 @@ import copy
 import collections
 
 #TODO: fix up t-junctions for 2-sided lines, where only one gets split
-#TODO: print some counters
-#     - avg imbalance
-#     - best imbalance, worst imbalance
-#     - num splits
-#     - average node splits
-#     - best splits, worst splits
-#     - num axial nodes, num non-axial
 
 # original map objects from the WAD
 vertexes = []
@@ -20,6 +13,8 @@ sectors = []
 # part of the BSP process
 b_nodes = []
 b_leafs = []
+
+stats = {}
 
 # output objects
 o_verts = []
@@ -341,7 +336,21 @@ def recursiveBSP(objs):
 
     o_verts = []
 
+    stats = {}
+    stats["average imbalance"] = 0
+    stats["best imbalance"] = 0
+    stats["worst imbalance"] = 0
+    stats["num splits"] = 0
+    stats["average node splits"] = 0
+    stats["best node splits"] = 0
+    stats["worst node splits"] = 0
+    stats["num axial nodes"] = 0
+    stats["num nonaxial nodes"] = 0
+
     _recursiveBSP(_createBLines())
 
+    print "================"
     print "%d nodes" % len(b_nodes)
     print "%d leafs" % len(b_leafs)
+    for statname, val in stats.iteritems():
+        print "%s: %s" % (statname, val)
