@@ -203,6 +203,7 @@ def _countSplits(lines, l):
     return (front, back, cross)
 
 
+#FIXME: We're choosing a line by somewhat taking a line out of the list, finding where everybody else lies, then including it back in the list. If we need to update the convexity test to include colinear lines, we must fix here as well. Eg: with the new convexity rule, a line facing right but with all other lines on its left would be a potential splitter. Essentially we need to rework this func to find a Line, not a BLine. The problem is we're sampling a BLine and excluding it from the spacial tests. We'd also get rid of the "len_ - 1" adjustment as it'd be off by one.
 def _chooseNodeLine(lines):
     len_ = float(len(lines))
 
