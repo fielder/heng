@@ -264,10 +264,13 @@ def _lineSurfDescs(bline):
 
     if not back_sector:
         if sidedef_front["toptexture"] != "-":
-            raise Exception("one-sided line with upper texture")
+            print "WARNING: one-sided line with upper texture"
+            #TODO: print some more info so it can be tracked down
         if sidedef_front["bottomtexture"] != "-":
-            raise Exception("one-sided line with lower texture")
+            print "WARNING: one-sided line with lower texture"
+            #TODO: print some more info so it can be tracked down
         if sidedef_front["midtexture"] == "-":
+            # hall-of-mirrors case
             raise Exception("one-sided line without middle texture")
 
         ret.append( SurfDesc(bline,
@@ -282,6 +285,10 @@ def _lineSurfDescs(bline):
 
         # upper surface
         if back_ceiling < front_ceiling:
+            if sidedef_front["toptexture"] == "-":
+                print "WARNING: top surface with no texture"
+                #TODO: print some more info so it can be tracked down
+
             ret.append( SurfDesc(bline,
                                  front_ceiling,
                                  back_ceiling,
@@ -291,6 +298,10 @@ def _lineSurfDescs(bline):
 
         # lower surface
         if back_floor > front_floor:
+            if sidedef_front["bottomtexture"] == "-":
+                print "WARNING: bottom surface with no texture"
+                #TODO: print some more info so it can be tracked down
+
             ret.append( SurfDesc(bline,
                                  back_floor,
                                  front_floor,
@@ -301,8 +312,8 @@ def _lineSurfDescs(bline):
         # middle texture on a 2-sided line, secret wall or a grill texture
         if sidedef_front["midtexture"] != "-":
             ret.append( SurfDesc(bline,
-                                 front_ceiling,
-                                 front_floor,
+                                 min(front_ceiling, back_ceiling),
+                                 max(front_floor, back_floor),
                                  sidedef_front["midtexture"],
                                  sidedef_front["xoff"],
                                  sidedef_front["yoff"]) )
