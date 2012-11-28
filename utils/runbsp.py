@@ -259,6 +259,9 @@ def _lineSurfDescs(bline):
 
     ret = []
 
+    front_ceiling = front_sector["ceilingheight"]
+    front_floor = front_sector["floorheight"]
+
     if not back_sector:
         if sidedef_front["toptexture"] != "-":
             raise Exception("one-sided line with upper texture")
@@ -267,11 +270,45 @@ def _lineSurfDescs(bline):
         if sidedef_front["midtexture"] == "-":
             raise Exception("one-sided line without middle texture")
 
-    #TODO: look at front & back sectors; create up to 3 surface descs
+        ret.append( SurfDesc(bline,
+                             front_ceiling,
+                             front_floor,
+                             sidedef_front["midtexture"],
+                             sidedef_front["xoff"],
+                             sidedef_front["yoff"]) )
+    else:
+        back_ceiling = back_sector["ceilingheight"]
+        back_floor = back_sector["floorheight"]
+
+        # upper surface
+        if back_ceiling < front_ceiling:
+            ret.append( SurfDesc(bline,
+                                 front_ceiling,
+                                 back_ceiling,
+                                 sidedef_front["toptexture"],
+                                 sidedef_front["xoff"],
+                                 sidedef_front["yoff"]) )
+
+        # lower surface
+        if back_floor > front_floor:
+            ret.append( SurfDesc(bline,
+                                 back_floor,
+                                 front_floor,
+                                 sidedef_front["bottomtexture"],
+                                 sidedef_front["xoff"],
+                                 sidedef_front["yoff"]) )
+
+        # middle texture on a 2-sided line, secret wall or a grill texture
+        if sidedef_front["midtexture"] != "-":
+            ret.append( SurfDesc(bline,
+                                 front_ceiling,
+                                 front_floor,
+                                 sidedef_front["midtexture"],
+                                 sidedef_front["xoff"],
+                                 sidedef_front["yoff"]) )
 
     return ret
 
-# "bline", "top", "bottom", "texture", "xoff", "yoff"
 
 def _genLeaf(blines):
     first_surf = len(o_surfs)
