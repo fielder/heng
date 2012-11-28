@@ -96,8 +96,7 @@ def _recursiveBSP(lines):
 
     # find a good partitioning plane
     cp = _chooseNodeLine(choiceparams)
-
-    nodeline = line2d.Line2D(lines[cp.index].verts[0], lines[cp.index].verts[1])
+    nodeline = lines[cp.index]
 
     frontlines, backlines = nodeline.splitLines(lines)
 
@@ -108,7 +107,7 @@ def _recursiveBSP(lines):
 
     idx = len(b_nodes)
     b_nodes.append({})
-    b_nodes[idx]["node"] = nodeline
+    b_nodes[idx]["node"] = line2d.Line2D(nodeline.verts[0], nodeline.verts[1])
     b_nodes[idx]["front"] = _recursiveBSP(frontlines)
     b_nodes[idx]["back"] = _recursiveBSP(backlines)
 
@@ -157,50 +156,144 @@ def recursiveBSP(objs):
 
 ########################################################################
 
+class PlaneDump(object):
+    def __init__(self):
+        self.planes = []
+        #TODO: ...
+
+    def add(self, p):
+        pass
+        #TODO: use back-facing planes
+        #TODO: ...
+
+
 class VertexDump(object):
     def __init__(self):
-        self._verts = []
-        self._v_to_idx = {}
-    def add(self, v):
-        if v in self._v_to_idx:
-            return self._v_to_idx[v]
-        self._v_to_idx[v] = len(self._verts)
-        self._verts.append(v)
+        self.verts = []
+        self._v_to_index = {}
+
+    def add(self, xyz):
+        if xyz in self._v_to_index:
+            return self._v_to_index[xyz]
+        idx = len(self.verts)
+        self._v_to_index[xyz] = idx
+        self.verts.append(xyz)
+        return idx
+
 
 class EdgeDump(object):
     def __init__(self):
-        self._edges = []
-        self._e_to_idx = {}
-    def add(self, v1, v2):
-        e = (v1, v2)
-        eb = (v2, v1)
-        if eb in self._e_to_idx:
-            return self._e_to_idx[eb] | 0x80000000
-        elif e in self._e_to_idx:
-            return self._e_to_idx[e]
-        self._e_to_idx[e] = len(self._edges)
-        self._edges.append(e)
+        self.edges = []
+        self._e_to_index = {}
+
+    def add(self, v1_idx, v2_idx):
+        e = (v1_idx, v2_idx)
+        eb = (v2_idx, v1_idx)
+        if eb in self._e_to_index:
+            return self._e_to_index[eb] | 0x80000000
+        elif e in self._e_to_index:
+            return self._e_to_index[e]
+        idx = len(self.edges)
+        self._e_to_index[e] = idx
+        self.edges.append(e)
+        return idx
 
 
-SurfDesc = collections.namedtuple("SurfDesc", ["bline", "top", "bottom"])
+SurfDesc = collections.namedtuple("SurfDesc", ["bline", "top", "bottom", "texture", "xoff", "yoff"])
+Bounds = collections.namedtuple("Bounds", ["mins", "maxs"])
 
-o_planes = []
-o_verts = []
-o_edges = []
+o_planes = None
+o_verts = None
+o_edges = None
 o_surfs = []
 o_surfedges = []
 o_nodes = []
 o_leafs = []
 
-#def _genPlane(plane): return the plane index, high bit set if on back side
-#def _genVertex(v): return the vertex index
-#def _genEdge(v1, v2): return the edge index, high bit set if runs backwards
-#def _genSurface(surfdesc): emit a rectangular surface
-#def _genLeaf(blines): emit planes/verts/edges/surfs/surfedges and the leaf; update bbox
-#def _genNode(node): emit the node
-#def _clearBBox():
-#def _updateBBox(mins, maxs):
-#def _planeForBLine(bline):
+
+def _clearBounds():
+    return Bounds((999999.0, 999999.0, 999999.0), (-999999.0, -999999.0, -999999.0))
+
+
+def _updateBounds(bounds, p):
+    mins, maxs = bounds
+    mins = (min(mins[0], p[0]), min(mins[1], p[1]), min(mins[2], p[2]))
+    maxs = (max(maxs[0], p[0]), max(maxs[1], p[1]), max(maxs[2], p[2]))
+    return Bounds(mins, maxs)
+
+
+def _planeForBLine(bline):
+    normal = (bline.normal[0], 0.0, bline.normal[1])
+    dist = bline.dist
+    return (normal, dist)
+
+
+def _genPlane(plane):
+    pass
+
+
+def _genSurface(surfdesc):
+    #TODO: emit a rectangular surface
+    pass
+
+
+def _lineSurfDescs(bline):
+    if bline.is_backside:
+        sidenum_front = bline.linedef["sidenum"][1]
+        sidenum_back = bline.linedef["sidenum"][0]
+    else:
+        sidenum_front = bline.linedef["sidenum"][0]
+        sidenum_back = bline.linedef["sidenum"][1]
+
+    sidedef_front = sidedefs[sidenum_front]
+    if sidenum_back != -1:
+        sidedef_back = sidedefs[sidenum_back]
+    else:
+        sidedef_back = None
+
+    front_sector = sectors[sidedef_front["sector"]]
+    if sidedef_back is not None:
+        back_sector = sectors[sidedef_back["sector"]]
+    else:
+        back_sector = None
+
+    ret = []
+
+    if not back_sector:
+        if sidedef_front["toptexture"] != "-":
+            raise Exception("one-sided line with upper texture")
+        if sidedef_front["bottomtexture"] != "-":
+            raise Exception("one-sided line with lower texture")
+        if sidedef_front["midtexture"] == "-":
+            raise Exception("one-sided line without middle texture")
+
+    #TODO: look at front & back sectors; create up to 3 surface descs
+
+    return ret
+
+# "bline", "top", "bottom", "texture", "xoff", "yoff"
+
+def _genLeaf(blines):
+    first_surf = len(o_surfs)
+
+    for bline in blines:
+        for surfdesc in _lineSurfDescs(bline):
+            _genSurface(surfdesc)
+
+    num_surfs = len(o_surfs) - first_surf
+
+    #TODO: flags
+    #TODO: bbox
+    #TODO: first surf
+    #TODO: num surfs
+
+
+def _genNode(bnode):
+    pass
+    #TODO: flags
+    #TODO: bbox
+    #TODO: plane
+    #TODO: children
 
 
 def buildMap():
@@ -212,18 +305,18 @@ def buildMap():
     global o_nodes
     global o_leafs
 
-    o_planes = []
-    o_verts = []
-    o_edges = []
+    o_planes = PlaneDump()
+    o_verts = VertexDump()
+    o_edges = EdgeDump()
     o_surfs = []
     o_surfedges = []
     o_nodes = []
     o_leafs = []
 
-#   for idx, leaf in b_leafs:
-#       surfs = []
-#       for bline in leaf:
-#           surfs.extend(_surfacesFromBLine(bline))
-#       pass
+    for blines in b_leafs:
+        _genLeaf(blines)
+
+    for bnode in b_nodes:
+        _genNode(bnode)
 
 #TODO: recursively update node bboxes

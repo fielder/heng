@@ -120,3 +120,4 @@ if __name__ == "__main__":
         print "%d SSECTORS" % (len(w.readLumpFromOffset("SSECTORS", start)) / 4)
 
         runbsp.recursiveBSP(objs)
+        runbsp.buildMap()
