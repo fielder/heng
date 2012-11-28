@@ -1,6 +1,6 @@
-import math
-import copy
 import collections
+
+import line2d
 
 #TODO: fix up t-junctions for 2-sided lines, where only one gets split
 
@@ -14,140 +14,13 @@ sectors = []
 b_nodes = []
 b_leafs = []
 
-stats = {}
 
-# output objects
-o_verts = []
-
-SIDE_EPSILON = 0.02
-
-SIDE_ON    = 0 # lies on the line
-SIDE_FRONT = 1
-SIDE_BACK  = 2
-SIDE_CROSS = 3
-
-
-def dot(a, b):
-    return a[0] * b[0] + a[1] * b[1]
-
-
-class Line(object):
-    def __init__(self, v1, v2):
-        self.verts = (v1, v2)
-
-        dx, dy = self.delta()
-        normal = (dy, -dx)
-        len_ = math.hypot(*normal)
-        self.normal = (normal[0] / len_, normal[1] / len_)
-        self.dist = dot(self.verts[0], self.normal)
-
-    def delta(self):
-        return (self.verts[1][0] - self.verts[0][0], self.verts[1][1] - self.verts[0][1])
-
-    def isAxial(self):
-        return math.fabs(self.normal[0]) == 1.0 or math.fabs(self.normal[1]) == 1.0
-
-    def pointSide(self, p):
-        d = dot(self.normal, p) - self.dist
-
-        if math.fabs(d) < SIDE_EPSILON:
-            side = SIDE_ON
-        elif d < 0:
-            side = SIDE_BACK
-        elif d > 0:
-            side = SIDE_FRONT
-        else:
-            raise Exception("shouldn't happen")
-
-        return side
-
-    def pointsSides(self, points):
-        return [self.pointSide(p) for p in points]
-
-    def lineSide(self, other):
-        """
-        Find which side other lies on. Note if the other line is
-        colinear, we use the other's normal to determine whether
-        it's on our front or back side.
-        """
-
-        s1, s2 = self.pointsSides( (other.verts[0], other.verts[1]) )
-
-        if s1 == s2:
-            if s1 == SIDE_ON:
-                x = other.verts[0][0] + other.normal[0] * 8.0
-                y = other.verts[0][1] + other.normal[1] * 8.0
-                side = self.pointSide((x, y))
-            else:
-                # both on one side
-                side = s1
-        elif s1 == SIDE_ON:
-            side = s2
-        elif s2 == SIDE_ON:
-            side = s1
-        else:
-            side = SIDE_CROSS
-
-        if side == SIDE_ON:
-            # shouldn't happen
-            raise Exception("lineSide() gave ON")
-
-        return side
-
-    def _splitCrossingLine(self, other):
-        """
-        It's assumed other is known to cross.
-        """
-
-        d1 = dot(self.normal, other.verts[0]) - self.dist
-        d2 = dot(self.normal, other.verts[1]) - self.dist
-
-        frac = d1 / (d1 - d2)
-        mid_x = self.verts[0][0] + frac * (self.verts[1][0] - self.verts[0][0]);
-        mid_y = self.verts[0][1] + frac * (self.verts[1][1] - self.verts[0][1]);
-        mid = (mid_x, mid_y)
-
-        front = copy.copy(self)
-        back = copy.copy(self)
-
-        if d1 < 0:
-            back.verts = (back.verts[0], mid)
-            front.verts = (mid, front.verts[1])
-        else:
-            back.verts = (mid, back.verts[1])
-            front.verts = (front.verts[0], mid)
-
-        return (front, back)
-
-    def splitLine(self, other):
-        side = self.lineSide(other)
-
-        if side == SIDE_FRONT:
-            front = other
-            back = None
-        elif side == SIDE_BACK:
-            front = None
-            back = other
-        else:
-            front, back = self._splitCrossingLine(other)
-
-        return (front, back)
-
-    def splitLines(self, lines):
-        front = []
-        back = []
-        for l in lines:
-            f, b = self.splitLine(l)
-            if f:
-                front.append(f)
-            if b:
-                back.append(b)
-        return (front, back)
-
-
-class BLine(Line):
+class BLine(line2d.Line2D):
     def __init__(self, linedef, is_backside=False):
         self.linedef = linedef
+
+        # note that if we're on the back side we're using the linedef's
+        # 2nd sidenum sidedef
         self.is_backside = is_backside
 
         v1 = (float(vertexes[linedef["v1"]][0]), float(vertexes[linedef["v1"]][1]))
@@ -159,84 +32,26 @@ class BLine(Line):
         super(BLine, self).__init__(v1, v2)
 
 
-#FIXME: Will fail for cases where all lines are colinear, but lines
-#       lie on both sides of one. Is this case even possible?
-def _isConvex(lines):
-    """
-    Check if a set of lines form a convex space. If 2 separate vertices
-    lay on opposite sides of a line, it's non-convex.
-    """
-
-    for l in lines:
-        sides = set()
-
-        for other in lines:
-            if l == other:
-                continue
-
-            sides.update(l.pointsSides(other.verts))
-
-            if SIDE_FRONT in sides and SIDE_BACK in sides:
-                return False
-
-    return True
-
-
 ChoiseParams = collections.namedtuple("ChoiseParams", ["index", "axial", "front", "back", "cross", "imbalance"])
 
 #TODO: Probably check against a few different cutoffs; the idea is that
 #      a lower cutoff (gives a better balanced tree) might be worth a
 #      few extra splits.
-IMBALANCE_CUTOFF = 0.15
+IMBALANCE_CUTOFF = 0.5
 
 
-def _countSplits(lines, l):
-    sides = []
-    for ll in lines:
-        if ll != l:
-            sides.append(l.lineSide(ll))
-
-    front = sides.count(SIDE_FRONT)
-    back = sides.count(SIDE_BACK)
-    cross = sides.count(SIDE_CROSS)
-
-    return (front, back, cross)
-
-
-#FIXME: We're choosing a line by somewhat taking a line out of the list, finding where everybody else lies, then including it back in the list. If we need to update the convexity test to include colinear lines, we must fix here as well. Eg: with the new convexity rule, a line facing right but with all other lines on its left would be a potential splitter. Essentially we need to rework this func to find a Line, not a BLine. The problem is we're sampling a BLine and excluding it from the spacial tests. We'd also get rid of the "len_ - 1" adjustment as it'd be off by one.
-def _chooseNodeLine(lines):
-    len_ = float(len(lines))
-
-    # sort lines by axial cases first
-    axial = []
-    nonaxial = []
-    for l in lines:
-        if l.isAxial():
-            axial.append(l)
-        else:
-            nonaxial.append(l)
-    lines = axial + nonaxial
-
-    counts = []
-
-    # find where each line lies with respect to each other
-    for idx, l in enumerate(lines):
-        front, back, cross = _countSplits(lines, l)
-        # note we subtract 1 from the lines length as the choice node isn't
-        # included in the side counts
-        counts.append( ChoiseParams(idx, l.isAxial(), front, back, cross, abs(front - back) / (len_ - 1)) )
+def _chooseNodeLine(choiceparams):
+    axial = filter(lambda cp: cp.axial, choiceparams)
+    nonaxial = filter(lambda cp: not cp.axial, choiceparams)
 
     # sort the candidates by how well they divide the space; ideally
-    # we would get a line that divides the space exactly in half
-    by_imbalance = sorted(counts, key=lambda x: x.imbalance)
-    by_imbalance_axial = filter(lambda x: x.axial, by_imbalance)
-    by_imbalance_nonaxial = filter(lambda x: not x.axial, by_imbalance)
+    # we would get a line that divides the space exactly in half with
+    # the fewest splits
+    by_imbalance_axial = sorted(axial, key=lambda cp: cp.imbalance)
+    by_imbalance_nonaxial = sorted(nonaxial, key=lambda cp: cp.imbalance)
 
     best_axial = None
     for cp in by_imbalance_axial:
-        if cp.cross == 0 and 0 in [cp.front, cp.back]:
-            # not a valid node if it doesn't divide the space
-            continue
         if cp.imbalance > IMBALANCE_CUTOFF and best_axial is not None:
             break
         if best_axial is None:
@@ -246,9 +61,6 @@ def _chooseNodeLine(lines):
 
     best_nonaxial = None
     for cp in by_imbalance_nonaxial:
-        if cp.cross == 0 and 0 in [cp.front, cp.back]:
-            # not a valid node if it doesn't divide the space
-            continue
         if cp.imbalance > IMBALANCE_CUTOFF and best_nonaxial is not None:
             break
         if best_nonaxial is None:
@@ -264,24 +76,28 @@ def _chooseNodeLine(lines):
         # shouldn't happen
         raise Exception("no node chosen")
 
-    if False:
-        print best
+    return best
 
-    return Line(lines[best.index].verts[0], lines[best.index].verts[1])
-
-#FIXME: Convexity test will probably have to change to properly handle
-#       colinar lines creating a "non-convex" space
-#       If this is done, we'll use _countSplits(). We should reuse the
-#       results of this over to the node chooser so it's not done
-#       twice.
 
 def _recursiveBSP(lines):
-    if _isConvex(lines):
+    # find which lines can act as a partitioning node
+    choiceparams = []
+    for idx, l in enumerate(lines):
+        front, back, cross = l.countSides(lines)
+        if cross or (front and back):
+            cp = ChoiseParams(idx, l.isAxial(), front, back, cross, abs(front - back) / float(len(lines)))
+            choiceparams.append(cp)
+
+    if not choiceparams:
+        # no line splits the space into 2 parts; must be a leaf
         idx = len(b_leafs)
         b_leafs.append(lines)
         return idx | 0x80000000
 
-    nodeline = _chooseNodeLine(lines)
+    # find a good partitioning plane
+    cp = _chooseNodeLine(choiceparams)
+
+    nodeline = line2d.Line2D(lines[cp.index].verts[0], lines[cp.index].verts[1])
 
     frontlines, backlines = nodeline.splitLines(lines)
 
@@ -292,7 +108,6 @@ def _recursiveBSP(lines):
 
     idx = len(b_nodes)
     b_nodes.append({})
-
     b_nodes[idx]["node"] = nodeline
     b_nodes[idx]["front"] = _recursiveBSP(frontlines)
     b_nodes[idx]["back"] = _recursiveBSP(backlines)
@@ -325,7 +140,6 @@ def recursiveBSP(objs):
     global sectors
     global b_nodes
     global b_leafs
-    global o_verts
 
     vertexes = objs["VERTEXES"]
     linedefs = objs["LINEDEFS"]
@@ -335,23 +149,81 @@ def recursiveBSP(objs):
     b_nodes = []
     b_leafs = []
 
-    o_verts = []
-
-    stats = {}
-    stats["average imbalance"] = 0
-    stats["best imbalance"] = 0
-    stats["worst imbalance"] = 0
-    stats["num splits"] = 0
-    stats["average node splits"] = 0
-    stats["best node splits"] = 0
-    stats["worst node splits"] = 0
-    stats["num axial nodes"] = 0
-    stats["num nonaxial nodes"] = 0
-
     _recursiveBSP(_createBLines())
 
-    print "================"
+    print ""
     print "%d nodes" % len(b_nodes)
     print "%d leafs" % len(b_leafs)
-    for statname, val in stats.iteritems():
-        print "%s: %s" % (statname, val)
+
+########################################################################
+
+class VertexDump(object):
+    def __init__(self):
+        self._verts = []
+        self._v_to_idx = {}
+    def add(self, v):
+        if v in self._v_to_idx:
+            return self._v_to_idx[v]
+        self._v_to_idx[v] = len(self._verts)
+        self._verts.append(v)
+
+class EdgeDump(object):
+    def __init__(self):
+        self._edges = []
+        self._e_to_idx = {}
+    def add(self, v1, v2):
+        e = (v1, v2)
+        eb = (v2, v1)
+        if eb in self._e_to_idx:
+            return self._e_to_idx[eb] | 0x80000000
+        elif e in self._e_to_idx:
+            return self._e_to_idx[e]
+        self._e_to_idx[e] = len(self._edges)
+        self._edges.append(e)
+
+
+SurfDesc = collections.namedtuple("SurfDesc", ["bline", "top", "bottom"])
+
+o_planes = []
+o_verts = []
+o_edges = []
+o_surfs = []
+o_surfedges = []
+o_nodes = []
+o_leafs = []
+
+#def _genPlane(plane): return the plane index, high bit set if on back side
+#def _genVertex(v): return the vertex index
+#def _genEdge(v1, v2): return the edge index, high bit set if runs backwards
+#def _genSurface(surfdesc): emit a rectangular surface
+#def _genLeaf(blines): emit planes/verts/edges/surfs/surfedges and the leaf; update bbox
+#def _genNode(node): emit the node
+#def _clearBBox():
+#def _updateBBox(mins, maxs):
+#def _planeForBLine(bline):
+
+
+def buildMap():
+    global o_planes
+    global o_verts
+    global o_edges
+    global o_surfs
+    global o_surfedges
+    global o_nodes
+    global o_leafs
+
+    o_planes = []
+    o_verts = []
+    o_edges = []
+    o_surfs = []
+    o_surfedges = []
+    o_nodes = []
+    o_leafs = []
+
+#   for idx, leaf in b_leafs:
+#       surfs = []
+#       for bline in leaf:
+#           surfs.extend(_surfacesFromBLine(bline))
+#       pass
+
+#TODO: recursively update node bboxes
