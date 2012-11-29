@@ -13,6 +13,7 @@ sectors = []
 # part of the BSP process
 b_nodes = []
 b_leafs = []
+b_numsplits = 0
 
 
 class BLine(line2d.Line2D):
@@ -80,6 +81,8 @@ def _chooseNodeLine(choiceparams):
 
 
 def _recursiveBSP(lines):
+    global b_numsplits
+
     # find which lines can act as a partitioning node
     choiceparams = []
     for idx, l in enumerate(lines):
@@ -99,6 +102,7 @@ def _recursiveBSP(lines):
     nodeline = lines[cp.index]
 
     frontlines, backlines = nodeline.splitLines(lines)
+    b_numsplits += len(frontlines) + len(backlines) - len(lines)
 
     if not frontlines:
         raise Exception("node chosen with no front space")
@@ -139,6 +143,12 @@ def recursiveBSP(objs):
     global sectors
     global b_nodes
     global b_leafs
+    global b_numsplits
+
+    print "%d VERTEXES" % len(objs["VERTEXES"])
+    print "%d LINEDEFS" % len(objs["LINEDEFS"])
+    print "%d SIDEDEFS" % len(objs["SIDEDEFS"])
+    print "%d SECTORS" % len(objs["SECTORS"])
 
     vertexes = objs["VERTEXES"]
     linedefs = objs["LINEDEFS"]
@@ -147,24 +157,35 @@ def recursiveBSP(objs):
 
     b_nodes = []
     b_leafs = []
+    b_numsplits = 0
+
+    print ""
+    print "Generating BSP tree..."
 
     _recursiveBSP(_createBLines())
 
-    print ""
     print "%d nodes" % len(b_nodes)
     print "%d leafs" % len(b_leafs)
+    print "%d splits" % b_numsplits
 
 ########################################################################
 
 class PlaneDump(object):
     def __init__(self):
         self.planes = []
-        #TODO: ...
+        self._p_to_index = {}
 
-    def add(self, p):
-        pass
-        #TODO: use back-facing planes
-        #TODO: ...
+    def add(self, normal, dist):
+        p = (normal[0], normal[1], normal[2], dist)
+        mirror = (-normal[0], -normal[1], -normal[2], -dist)
+        if mirror in self._p_to_index:
+            return self._p_to_index[mirror] | 0x80000000
+        elif p in self._p_to_index:
+            return self._p_to_index[p]
+        idx = len(self.planes)
+        self._p_to_index[p] = idx
+        self.planes.append(p)
+        return idx
 
 
 class VertexDump(object):
@@ -233,7 +254,10 @@ def _genPlane(plane):
 
 
 def _genSurface(surfdesc):
-    #TODO: emit a rectangular surface
+    # verts
+    # edges
+    # plane
+    # plane side
     pass
 
 
@@ -330,6 +354,10 @@ def _genLeaf(blines):
 
     num_surfs = len(o_surfs) - first_surf
 
+    bbox = _clearBounds()
+    for s in o_surfs[first_surf:]:
+        pass
+
     #TODO: flags
     #TODO: bbox
     #TODO: first surf
@@ -353,6 +381,9 @@ def buildMap():
     global o_nodes
     global o_leafs
 
+    print ""
+    print "Creating geometry..."
+
     o_planes = PlaneDump()
     o_verts = VertexDump()
     o_edges = EdgeDump()
@@ -368,3 +399,11 @@ def buildMap():
         _genNode(bnode)
 
 #TODO: recursively update node bboxes
+
+    print "%d planes" % len(o_planes.planes)
+    print "%d verts" % len(o_verts.verts)
+    print "%d edges" % len(o_edges.edges)
+    print "%d surfs" % len(o_surfs)
+    print "%d surfedges" % len(o_surfedges)
+    print "%d nodes" % len(o_nodes)
+    print "%d leafs" % len(o_leafs)

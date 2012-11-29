@@ -98,24 +98,18 @@ if __name__ == "__main__":
     w = wad.Wad(sys.argv[1])
 
     for mapname in sys.argv[2:]:
-        print mapname
+        print "Loaded %s" % mapname
 
         start = w.lump_name_to_num[mapname]
 
         objs = {}
 
         objs["VERTEXES"] = _parseVERTEXES(w.readLumpFromOffset("VERTEXES", start))
-        print "%d VERTEXES" % len(objs["VERTEXES"])
-
         objs["LINEDEFS"] = _parseLINEDEFS(w.readLumpFromOffset("LINEDEFS", start))
-        print "%d LINEDEFS" % len(objs["LINEDEFS"])
-
         objs["SIDEDEFS"] = _parseSIDEDEFS(w.readLumpFromOffset("SIDEDEFS", start))
-        print "%d SIDEDEFS" % len(objs["SIDEDEFS"])
-
         objs["SECTORS"] = _parseSECTORS(w.readLumpFromOffset("SECTORS", start))
-        print "%d SECTORS" % len(objs["SECTORS"])
 
+        # see how many nodes/leafs the original BSP'er generated for comparison
         print "%d NODES" % (len(w.readLumpFromOffset("NODES", start)) / 28)
         print "%d SSECTORS" % (len(w.readLumpFromOffset("SSECTORS", start)) / 4)
 
