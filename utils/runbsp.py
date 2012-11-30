@@ -416,6 +416,16 @@ def _recursiveUpdateOutputNodeBBox(onode):
     #TODO: ...
 
 
+def _genLeaf2D(blines):
+    first_line = len(o_lines_2d)
+    for bline in blines:
+        v1 = o_verts_2d.add(bline.verts[0])
+        v2 = o_verts_2d.add(bline.verts[1])
+        o_lines_2d.append( {"v1": v1, "v2": v2} )
+    num_lines = len(o_lines_2d) - first_line
+    o_leafs_2d.append( {"firstline": first_line , "numlines": num_lines } )
+
+
 def buildMap():
     global o_planes
     global o_verts
@@ -444,6 +454,7 @@ def buildMap():
 
     for blines in b_leafs:
         _genLeaf(blines)
+        _genLeaf2D(blines)
 
     for bnode in b_nodes:
         _genNode(bnode)
