@@ -1,3 +1,4 @@
+import types
 import collections
 
 import line2d
@@ -111,7 +112,7 @@ def _recursiveBSP(lines):
 
     idx = len(b_nodes)
     b_nodes.append({})
-    b_nodes[idx]["node"] = line2d.Line2D(nodeline.verts[0], nodeline.verts[1])
+    b_nodes[idx]["line"] = line2d.Line2D(nodeline.verts[0], nodeline.verts[1])
     b_nodes[idx]["front"] = _recursiveBSP(frontlines)
     b_nodes[idx]["back"] = _recursiveBSP(backlines)
 
@@ -170,7 +171,37 @@ def recursiveBSP(objs):
 
 ########################################################################
 
+class Bounds(list):
+    def __init__(self, *args, **kwargs):
+        super(Bounds, self).__init__(*args, **kwargs)
+
+        self.mins = [999999.0, 999999.0, 999999.0]
+        self.maxs = [-999999.0, -999999.0, -999999.0]
+        self.append(self.mins)
+        self.append(self.maxs)
+
+    def update(self, points):
+        if type(points[0]) in [types.FloatType, types.IntType]:
+            # a single point passed in
+            points = [points]
+
+        xyz = []
+        xyz.append([p[0] for p in points])
+        xyz.append([p[1] for p in points])
+        xyz.append([p[2] for p in points])
+
+        for i in xrange(3):
+            self.mins[i] = min(self.mins[i], reduce(min, xyz[i]))
+            self.maxs[i] = max(self.mins[i], reduce(max, xyz[i]))
+
+
 class PlaneDump(object):
+    """
+    Note we don't go through any extra effort to find equal planes on
+    any type of epsilon. Nearly coplanar planes will be counted as 2
+    separate planes.
+    """
+
     def __init__(self):
         self.planes = []
         self._p_to_index = {}
@@ -189,16 +220,20 @@ class PlaneDump(object):
 
 
 class VertexDump(object):
+    """
+    Note this can be used for 2d or 3d vertices.
+    """
+
     def __init__(self):
         self.verts = []
         self._v_to_index = {}
 
-    def add(self, xyz):
-        if xyz in self._v_to_index:
-            return self._v_to_index[xyz]
+    def add(self, v):
+        if v in self._v_to_index:
+            return self._v_to_index[v]
         idx = len(self.verts)
-        self._v_to_index[xyz] = idx
-        self.verts.append(xyz)
+        self._v_to_index[v] = idx
+        self.verts.append(v)
         return idx
 
 
@@ -221,7 +256,6 @@ class EdgeDump(object):
 
 
 SurfDesc = collections.namedtuple("SurfDesc", ["bline", "top", "bottom", "texture", "xoff", "yoff"])
-Bounds = collections.namedtuple("Bounds", ["mins", "maxs"])
 
 o_planes = None
 o_verts = None
@@ -230,30 +264,20 @@ o_surfs = []
 o_surfedges = []
 o_nodes = []
 o_leafs = []
+o_verts_2d = None
+o_lines_2d = []
+o_leafs_2d = []
 
 
-def _clearBounds():
-    return Bounds((999999.0, 999999.0, 999999.0), (-999999.0, -999999.0, -999999.0))
-
-
-def _updateBounds(bounds, p):
-    mins, maxs = bounds
-    mins = (min(mins[0], p[0]), min(mins[1], p[1]), min(mins[2], p[2]))
-    maxs = (max(maxs[0], p[0]), max(maxs[1], p[1]), max(maxs[2], p[2]))
-    return Bounds(mins, maxs)
-
-
-def _planeForBLine(bline):
-    normal = (bline.normal[0], 0.0, bline.normal[1])
-    dist = bline.dist
+def _line3DNormal(l):
+    normal = (l.normal[0], 0.0, l.normal[1])
+    dist = l.dist
     return (normal, dist)
 
 
-def _genPlane(plane):
-    pass
-
-
 def _genSurface(surfdesc):
+#   xyz = []
+#   xyz.append( (, , ) )
     # verts
     # edges
     # plane
@@ -347,29 +371,49 @@ def _lineSurfDescs(bline):
 
 def _genLeaf(blines):
     first_surf = len(o_surfs)
-
     for bline in blines:
         for surfdesc in _lineSurfDescs(bline):
             _genSurface(surfdesc)
-
     num_surfs = len(o_surfs) - first_surf
 
-    bbox = _clearBounds()
+    bbox = Bounds()
     for s in o_surfs[first_surf:]:
+        #TODO: update bbox
         pass
 
-    #TODO: flags
-    #TODO: bbox
-    #TODO: first surf
-    #TODO: num surfs
+    flags = 0x80000000
+
+    ol = {}
+    ol["flags"] = flags
+    ol["bbox"] = bbox
+    ol["firstsurface"] = first_surf
+    ol["numsurfaces"] = num_surfs
+
+    o_leafs.append(ol)
 
 
 def _genNode(bnode):
+    normal, dist = _line3DNormal(bnode["line"])
+
+    flags = 0x0
+    bbox = Bounds()
+    front = bnode["front"]
+    back = bnode["back"]
+    plane = o_planes.add(normal, dist)
+
+    on = {}
+    on["flags"] = flags
+    on["bbox"] = bbox
+    on["front"] = front
+    on["back"] = back
+    on["plane"] = plane
+
+    o_nodes.append(on)
+
+
+def _recursiveUpdateOutputNodeBBox(onode):
     pass
-    #TODO: flags
-    #TODO: bbox
-    #TODO: plane
-    #TODO: children
+    #TODO: ...
 
 
 def buildMap():
@@ -380,6 +424,9 @@ def buildMap():
     global o_surfedges
     global o_nodes
     global o_leafs
+    global o_verts_2d
+    global o_lines_2d
+    global o_leafs_2d
 
     print ""
     print "Creating geometry..."
@@ -391,6 +438,9 @@ def buildMap():
     o_surfedges = []
     o_nodes = []
     o_leafs = []
+    o_verts_2d = VertexDump()
+    o_lines_2d = []
+    o_leafs_2d = []
 
     for blines in b_leafs:
         _genLeaf(blines)
@@ -398,12 +448,16 @@ def buildMap():
     for bnode in b_nodes:
         _genNode(bnode)
 
-#TODO: recursively update node bboxes
+    if o_nodes:
+        _recursiveUpdateOutputNodeBBox(o_nodes[0])
 
-    print "%d planes" % len(o_planes.planes)
-    print "%d verts" % len(o_verts.verts)
-    print "%d edges" % len(o_edges.edges)
-    print "%d surfs" % len(o_surfs)
-    print "%d surfedges" % len(o_surfedges)
-    print "%d nodes" % len(o_nodes)
-    print "%d leafs" % len(o_leafs)
+    print "%d output planes" % len(o_planes.planes)
+    print "%d output verts" % len(o_verts.verts)
+    print "%d output edges" % len(o_edges.edges)
+    print "%d output surfs" % len(o_surfs)
+    print "%d output surfedges" % len(o_surfedges)
+    print "%d output nodes" % len(o_nodes)
+    print "%d output leafs" % len(o_leafs)
+    print "%d output 2d verts" % len(o_verts_2d.verts)
+    print "%d output 2d lines" % len(o_lines_2d)
+    print "%d output 2d leafs" % len(o_leafs_2d)
