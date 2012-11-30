@@ -1,6 +1,7 @@
 import types
 import collections
 
+import wad
 import line2d
 
 #TODO: fix up t-junctions for 2-sided lines, where only one gets split
@@ -171,6 +172,20 @@ def recursiveBSP(objs):
 
 ########################################################################
 
+SurfDesc = collections.namedtuple("SurfDesc", ["bline", "top", "bottom", "texture", "xoff", "yoff"])
+
+o_planes = None
+o_verts = None
+o_edges = None
+o_surfs = []
+o_surfedges = []
+o_nodes = []
+o_leafs = []
+o_verts_2d = None
+o_lines_2d = []
+o_leafs_2d = []
+
+
 class Bounds(list):
     def __init__(self, *args, **kwargs):
         super(Bounds, self).__init__(*args, **kwargs)
@@ -238,6 +253,10 @@ class VertexDump(object):
 
 
 class EdgeDump(object):
+    """
+    Note this can be used for 2d or 3d lines.
+    """
+
     def __init__(self):
         self.edges = []
         self._e_to_index = {}
@@ -253,20 +272,6 @@ class EdgeDump(object):
         self._e_to_index[e] = idx
         self.edges.append(e)
         return idx
-
-
-SurfDesc = collections.namedtuple("SurfDesc", ["bline", "top", "bottom", "texture", "xoff", "yoff"])
-
-o_planes = None
-o_verts = None
-o_edges = None
-o_surfs = []
-o_surfedges = []
-o_nodes = []
-o_leafs = []
-o_verts_2d = None
-o_lines_2d = []
-o_leafs_2d = []
 
 
 def _line3DNormal(l):
@@ -418,12 +423,18 @@ def _recursiveUpdateOutputNodeBBox(onode):
 
 def _genLeaf2D(blines):
     first_line = len(o_lines_2d)
+
     for bline in blines:
         v1 = o_verts_2d.add(bline.verts[0])
         v2 = o_verts_2d.add(bline.verts[1])
-        o_lines_2d.append( {"v1": v1, "v2": v2} )
+
+        line = {"v1": v1, "v2": v2}
+        o_lines_2d.append(line)
+
     num_lines = len(o_lines_2d) - first_line
-    o_leafs_2d.append( {"firstline": first_line , "numlines": num_lines } )
+
+    leaf = {"firstline": first_line , "numlines": num_lines}
+    o_leafs_2d.append(leaf)
 
 
 def buildMap():
@@ -472,3 +483,14 @@ def buildMap():
     print "%d output 2d verts" % len(o_verts_2d.verts)
     print "%d output 2d lines" % len(o_lines_2d)
     print "%d output 2d leafs" % len(o_leafs_2d)
+
+
+def writeFile(mapname, path):
+    print ""
+    print "Writing \"%s\" ..." % path
+
+    lumps = []
+    lumps.append((mapname, ""))
+    #...
+
+    wad.writeWad(path, lumps)

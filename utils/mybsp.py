@@ -115,3 +115,4 @@ if __name__ == "__main__":
 
         runbsp.recursiveBSP(objs)
         runbsp.buildMap()
+        runbsp.writeFile(mapname, "%s.wad" % mapname)
