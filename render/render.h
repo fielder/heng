@@ -3,6 +3,22 @@
 
 #include <stdint.h>
 
+struct viewplane_s
+{
+	float normal[3];
+	float dist;
+
+	struct viewplane_s *next;
+};
+
+enum
+{
+	VPLANE_LEFT,
+	VPLANE_TOP,
+	VPLANE_RIGHT,
+	VPLANE_BOTTOM
+};
+
 struct r_vars_s
 {
 	/* draw buffer */
@@ -29,28 +45,10 @@ struct r_vars_s
 	float up[3];
 	float forward[3];
 
+	struct viewplane_s vplanes[4];
+
 	/* the corner-most rays terminating points */
 	float far[4][3];
-
-//	struct viewplane_s vplanes[4];
-};
-
-struct viewplane_s
-{
-	float normal[3];
-	float dist;
-	int type;
-	int signbits;
-
-	struct viewplane_s *next;
-};
-
-enum
-{
-	VPLANE_LEFT,
-	VPLANE_TOP,
-	VPLANE_RIGHT,
-	VPLANE_BOTTOM
 };
 
 extern struct r_vars_s r_vars;

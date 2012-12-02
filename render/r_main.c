@@ -18,6 +18,9 @@ CameraChanged (void)
 	float x, y, z, xadj, yadj;
 	int i;
 
+	float ang, adj;
+	struct viewplane_s *p;
+
 	/* make transformation matrix */
 	Vec_Copy (r_vars.angles, v);
 	Vec_Scale (v, -1.0);
@@ -27,6 +30,9 @@ CameraChanged (void)
 	Vec_Copy (r_vars.xform[0], r_vars.left);
 	Vec_Copy (r_vars.xform[1], r_vars.up);
 	Vec_Copy (r_vars.xform[2], r_vars.forward);
+
+	/* view to world transformation matrix */
+	Vec_AnglesMatrix (r_vars.angles, cam2world, ROT_MATRIX_ORDER_ZYX);
 
 	/* Find the screen's corner-most pixel rays in world space.
 	 * Note that screen pixels projected to the back of the view
@@ -57,14 +63,47 @@ CameraChanged (void)
 	r_vars.far[3][2] = z;
 
 	/* move corner rays to world space */
-	Vec_AnglesMatrix (r_vars.angles, cam2world, ROT_MATRIX_ORDER_ZYX);
 	for (i = 0; i < 4; i++)
 	{
 		Vec_Transform (cam2world, r_vars.far[i], v);
 		Vec_Add (r_vars.pos, v, r_vars.far[i]);
 	}
 
-	//TODO: setup view planes
+	/* set up view planes */
+
+	adj = 2.0 * (M_PI / 180.0); /* debug: adjust view plane inwards */
+
+	p = &r_vars.vplanes[VPLANE_LEFT];
+	ang = (r_vars.fov_x / 2.0) - adj;
+	v[0] = -cos (ang);
+	v[1] = 0.0;
+	v[2] = sin (ang);
+	Vec_Transform (cam2world, v, p->normal);
+	p->dist = Vec_Dot (p->normal, r_vars.pos);
+
+	p = &r_vars.vplanes[VPLANE_RIGHT];
+	ang = (r_vars.fov_x / 2.0) - adj;
+	v[0] = cos (ang);
+	v[1] = 0.0;
+	v[2] = sin (ang);
+	Vec_Transform (cam2world, v, p->normal);
+	p->dist = Vec_Dot (p->normal, r_vars.pos);
+
+	p = &r_vars.vplanes[VPLANE_TOP];
+	ang = (r_vars.fov_y / 2.0) - adj;
+	v[0] = 0.0;
+	v[1] = -cos (ang);
+	v[2] = sin (ang);
+	Vec_Transform (cam2world, v, p->normal);
+	p->dist = Vec_Dot (p->normal, r_vars.pos);
+
+	p = &r_vars.vplanes[VPLANE_BOTTOM];
+	ang = (r_vars.fov_y / 2.0) - adj;
+	v[0] = 0.0;
+	v[1] = cos (ang);
+	v[2] = sin (ang);
+	Vec_Transform (cam2world, v, p->normal);
+	p->dist = Vec_Dot (p->normal, r_vars.pos);
 }
 
 
@@ -169,7 +208,7 @@ ClearScreen (void)
 
 #if 1
 static void
-DrawPoint3D (float p[3], int c)
+_DrawPoint3D (float p[3], int c)
 {
 	float local[3], v[3];
 	float zi;
@@ -185,6 +224,18 @@ DrawPoint3D (float p[3], int c)
 		if (uu >= 0 && uu < r_vars.w && vv >= 0 && vv < r_vars.h)
 			r_vars.screen[vv * r_vars.pitch + uu] = c;
 	}
+}
+static void
+DrawPoint3D (float p[3], int c)
+{
+	int i;
+	struct viewplane_s *plane;
+	for (i = 0, plane = r_vars.vplanes; i < 4; i++, plane++)
+	{
+		if (Vec_Dot(plane->normal, p) - plane->dist < 0)
+			return;
+	}
+	_DrawPoint3D (p, c);
 }
 #endif
 
