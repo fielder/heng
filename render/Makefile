@@ -9,7 +9,8 @@ OBJS =	$(OBJDIR)/bswap.o \
 	$(OBJDIR)/vec.o \
 	$(OBJDIR)/r_main.o \
 	$(OBJDIR)/r_cast.o \
-	$(OBJDIR)/r_sprite.o
+	$(OBJDIR)/r_sprite.o \
+	$(OBJDIR)/map.o
 
 all: $(TARGET)
 
@@ -31,4 +32,6 @@ $(OBJDIR)/r_main.o: r_main.c
 $(OBJDIR)/r_cast.o: r_cast.c
 	$(CC) -c $(CFLAGS) $? -o $@
 $(OBJDIR)/r_sprite.o: r_sprite.c
+	$(CC) -c $(CFLAGS) $? -o $@
+$(OBJDIR)/map.o: map.c
 	$(CC) -c $(CFLAGS) $? -o $@

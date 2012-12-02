@@ -47,14 +47,21 @@ def _cameraFly():
 def _debug():
     pass
 
+def _loadMap(path):
+    w = wad.Wad(path)
+
+    w.close()
+    print "Loaded \"%s\"" % path
+
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
-        print "usage: %s <iwad> <hwa map file>" % sys.argv[0]
+        print "usage: %s <iwad> <map file>" % sys.argv[0]
         sys.exit(0)
 
     hvars.iwad = wad.Wad(sys.argv[1])
-    hvars.hwa = None
+
+    _loadMap(sys.argv[2])
 
     io.init()
     r_main.init()

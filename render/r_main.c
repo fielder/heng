@@ -2,6 +2,7 @@
 #include <math.h>
 #include <string.h>
 
+#include "bswap.h"
 #include "render.h"
 #include "vec.h"
 
@@ -87,6 +88,8 @@ InitCamera (float fov_x)
 void
 Setup (uint8_t *buf, int w, int h, int pitch, float fov_x)
 {
+	SwapInit ();
+
 	r_vars.screen = buf;
 	r_vars.w = w;
 	r_vars.h = h;
