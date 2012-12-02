@@ -53,4 +53,26 @@ struct r_vars_s
 
 extern struct r_vars_s r_vars;
 
+
+extern void
+Setup (uint8_t *buf, int w, int h, int pitch, float fov_x);
+
+extern void
+CameraRotatePixels (float dx, float dy);
+
+extern void
+CameraThrust (float left, float up, float forward);
+
+extern void
+ClearScreen (void);
+
+extern void
+DrawWorld (void);
+
+extern void
+DrawPalette (void);
+
+extern void
+DrawLine (int x1, int y1, int x2, int y2, int c);
+
 #endif /* __RENDER_H__ */

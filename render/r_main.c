@@ -207,36 +207,80 @@ ClearScreen (void)
 
 
 #if 1
-static void
-_DrawPoint3D (float p[3], int c)
-{
-	float local[3], v[3];
-	float zi;
-	int uu, vv;
 
-	Vec_Subtract (p, r_vars.pos, local);
-	Vec_Transform (r_vars.xform, local, v);
-	if (v[2] > 0.0)
-	{
-		zi = 1.0 / v[2];
-		uu = (int)(r_vars.center_x - r_vars.near_dist * zi * v[0]);
-		vv = (int)(r_vars.center_y - r_vars.near_dist * zi * v[1]);
-		if (uu >= 0 && uu < r_vars.w && vv >= 0 && vv < r_vars.h)
-			r_vars.screen[vv * r_vars.pitch + uu] = c;
-	}
-}
-static void
-DrawPoint3D (float p[3], int c)
+static int
+_ClipPoint (float p[3])
 {
 	int i;
 	struct viewplane_s *plane;
+
 	for (i = 0, plane = r_vars.vplanes; i < 4; i++, plane++)
 	{
 		if (Vec_Dot(plane->normal, p) - plane->dist < 0)
-			return;
+			return 0;
 	}
-	_DrawPoint3D (p, c);
+
+	return 1;
 }
+
+static inline int
+_ProjectPoint (const float p[3], int *u, int *v)
+{
+	float local[3], out[3], zi;
+
+	Vec_Subtract (p, r_vars.pos, local);
+	Vec_Transform (r_vars.xform, local, out);
+	if (out[2] <= 0.0)
+		return 0;
+
+	zi = 1.0 / out[2];
+	*u = r_vars.center_x - r_vars.near_dist * zi * out[0];
+	*v = r_vars.center_y - r_vars.near_dist * zi * out[1];
+
+	return 1;
+}
+
+static void
+DrawPoint3D (float p[3], int c)
+{
+	if (_ClipPoint(p))
+	{
+		int u, v;
+
+		if (_ProjectPoint(p, &u, &v))
+		{
+			if (u >= 0 && u < r_vars.w && v >= 0 && v < r_vars.h)
+				r_vars.screen[v * r_vars.pitch + u] = c;
+		}
+	}
+}
+
+static void
+DrawLine3D (float p1[3], float p2[3], int c)
+{
+	if (_ClipPoint(p1) && _ClipPoint(p2))
+	{
+		int u1, v1, u2, v2;
+		if (_ProjectPoint(p1, &u1, &v1) && _ProjectPoint(p2, &u2, &v2))
+			DrawLine (u1, v1, u2, v2, c);
+	}
+}
+
+static void
+DrawMapLine2D (const struct line2d_s *l, int c)
+{
+	float a[3], b[3];
+
+	a[0] = l->v[0]->xy[0];
+	a[1] = 0.0;
+	a[2] = l->v[0]->xy[1];
+	b[0] = l->v[1]->xy[0];
+	b[1] = 0.0;
+	b[2] = l->v[1]->xy[1];
+
+	DrawLine3D (a, b, c);
+}
+
 #endif
 
 
@@ -245,6 +289,9 @@ DrawWorld (void)
 {
 	int i;
 	float xyz[3];
+
+	for (i = 0; i < map.num_lines_2d; i++)
+		DrawMapLine2D (map.lines_2d + i, 16 * 10 + 7);
 
 	for (i = 0; i < map.num_verts_2d; i++)
 	{
