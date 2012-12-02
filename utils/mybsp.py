@@ -3,6 +3,7 @@ import sys
 import struct
 
 import runbsp
+import writebsp
 import wad
 
 
@@ -114,5 +115,5 @@ if __name__ == "__main__":
         print "%d SSECTORS" % (len(w.readLumpFromOffset("SSECTORS", start)) / 4)
 
         runbsp.recursiveBSP(objs)
-        runbsp.buildMap()
-        runbsp.writeFile(mapname, "%s.wad" % mapname)
+        objs = runbsp.buildMap()
+        writebsp.writeFile(mapname, "%s.wad" % mapname, objs)

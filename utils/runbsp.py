@@ -182,7 +182,7 @@ o_surfedges = []
 o_nodes = []
 o_leafs = []
 o_verts_2d = None
-o_lines_2d = []
+o_lines_2d = None
 o_leafs_2d = []
 
 
@@ -422,16 +422,15 @@ def _recursiveUpdateOutputNodeBBox(onode):
 
 
 def _genLeaf2D(blines):
-    first_line = len(o_lines_2d)
+    first_line = len(o_lines_2d.edges)
 
     for bline in blines:
         v1 = o_verts_2d.add(bline.verts[0])
         v2 = o_verts_2d.add(bline.verts[1])
 
-        line = {"v1": v1, "v2": v2}
-        o_lines_2d.append(line)
+        o_lines_2d.add(v1, v2)
 
-    num_lines = len(o_lines_2d) - first_line
+    num_lines = len(o_lines_2d.edges) - first_line
 
     leaf = {"firstline": first_line , "numlines": num_lines}
     o_leafs_2d.append(leaf)
@@ -460,7 +459,7 @@ def buildMap():
     o_nodes = []
     o_leafs = []
     o_verts_2d = VertexDump()
-    o_lines_2d = []
+    o_lines_2d = EdgeDump()
     o_leafs_2d = []
 
     for blines in b_leafs:
@@ -481,16 +480,19 @@ def buildMap():
     print "%d output nodes" % len(o_nodes)
     print "%d output leafs" % len(o_leafs)
     print "%d output 2d verts" % len(o_verts_2d.verts)
-    print "%d output 2d lines" % len(o_lines_2d)
+    print "%d output 2d lines" % len(o_lines_2d.edges)
     print "%d output 2d leafs" % len(o_leafs_2d)
 
+    ret = {}
+    ret["planes"] = o_planes.planes
+    ret["verts"] = o_verts.verts
+    ret["edges"] = o_edges.edges
+    ret["surfs"] = o_surfs
+    ret["surfedges"] = o_surfedges
+    ret["nodes"] = o_nodes
+    ret["leafs"] = o_leafs
+    ret["verts_2d"] = o_verts_2d.verts
+    ret["lines_2d"] = o_lines_2d.edges
+    ret["leafs_2d"] = o_leafs_2d
 
-def writeFile(mapname, path):
-    print ""
-    print "Writing \"%s\" ..." % path
-
-    lumps = []
-    lumps.append((mapname, ""))
-    #...
-
-    wad.writeWad(path, lumps)
+    return ret
