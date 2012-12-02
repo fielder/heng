@@ -39,9 +39,9 @@ def _moveDown():
     _frame_move["up"] -= 1.0
 
 def _cameraFly():
-    left = ctypes.c_float(_frame_move["left"] * hvars.frametime * hvars.MOVESPEED)
-    up = ctypes.c_float(_frame_move["up"] * hvars.frametime * hvars.MOVESPEED)
-    fwd = ctypes.c_float(_frame_move["forward"] * hvars.frametime * hvars.MOVESPEED)
+    left = ctypes.c_float(_frame_move["left"] * hvars.frametime * hvars.movespeed)
+    up = ctypes.c_float(_frame_move["up"] * hvars.frametime * hvars.movespeed)
+    fwd = ctypes.c_float(_frame_move["forward"] * hvars.frametime * hvars.movespeed)
     hvars.c_api.CameraThrust(left, up, fwd)
 
 def _debug():
@@ -49,6 +49,15 @@ def _debug():
 
 def _loadMap(path):
     w = wad.Wad(path)
+
+    raw = w.readLump("VERTS_2D")
+    hvars.c_api.loadVertexes_2D(raw, len(raw))
+
+    raw = w.readLump("LINES_2D")
+    hvars.c_api.loadLines_2D(raw, len(raw))
+
+    raw = w.readLump("LEAFS_2D")
+    hvars.c_api.loadLeafs_2D(raw, len(raw))
 
     w.close()
     print "Loaded \"%s\"" % path
@@ -61,10 +70,10 @@ if __name__ == "__main__":
 
     hvars.iwad = wad.Wad(sys.argv[1])
 
-    _loadMap(sys.argv[2])
-
     io.init()
     r_main.init()
+
+    _loadMap(sys.argv[2])
 
     io.bind("escape", _quit)
     io.bind("f", _showFPS)

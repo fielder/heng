@@ -5,6 +5,7 @@
 #include "bswap.h"
 #include "render.h"
 #include "vec.h"
+#include "map.h"
 
 struct r_vars_s r_vars;
 
@@ -166,9 +167,60 @@ ClearScreen (void)
 }
 
 
+#if 1
+static void
+DrawPoint3D (float p[3], int c)
+{
+	float local[3], v[3];
+	float zi;
+	int uu, vv;
+
+	Vec_Subtract (p, r_vars.pos, local);
+	Vec_Transform (r_vars.xform, local, v);
+	if (v[2] > 0.0)
+	{
+		zi = 1.0 / v[2];
+		uu = (int)(r_vars.center_x - r_vars.near_dist * zi * v[0]);
+		vv = (int)(r_vars.center_y - r_vars.near_dist * zi * v[1]);
+		if (uu >= 0 && uu < r_vars.w && vv >= 0 && vv < r_vars.h)
+			r_vars.screen[vv * r_vars.pitch + uu] = c;
+	}
+}
+#endif
+
+
 void
 DrawWorld (void)
 {
+	int i;
+	float xyz[3];
+
+	for (i = 0; i < map.num_verts_2d; i++)
+	{
+		xyz[0] = map.verts_2d[i].xy[0];
+		xyz[1] = 0.0;
+		xyz[2] = map.verts_2d[i].xy[1];
+		DrawPoint3D (xyz, 4);
+	}
+
+	xyz[0] = 0; xyz[1] = 0; xyz[2] = 0;
+	for (i = 0; i < 64; i++)
+	{
+		xyz[0] = i * 2;
+		DrawPoint3D (xyz, 16 * 11);
+	}
+	xyz[0] = 0; xyz[1] = 0; xyz[2] = 0;
+	for (i = 0; i < 64; i++)
+	{
+		xyz[1] = i * 2;
+		DrawPoint3D (xyz, 16 * 7 + 8);
+	}
+	xyz[0] = 0; xyz[1] = 0; xyz[2] = 0;
+	for (i = 0; i < 64; i++)
+	{
+		xyz[2] = i * 2;
+		DrawPoint3D (xyz, 16 * 12 + 8);
+	}
 }
 
 

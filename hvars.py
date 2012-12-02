@@ -3,7 +3,7 @@ RENDER_SO = "./render.so"
 WIDTH = 320
 HEIGHT = 240
 
-MOVESPEED = 32.0
+movespeed = 128.0
 
 fov = 90.0
 

@@ -3,6 +3,7 @@
 
 /* in-memory structures */
 
+#if 0
 enum
 {
 	PLANE_X, /* normal (1, 0, 0) */
@@ -97,5 +98,36 @@ struct map_s
 	struct mthing_s *things;
 	int num_things;
 };
+#endif
+
+struct vertex2d_s
+{
+	float xy[2];
+};
+
+struct line2d_s
+{
+	struct vertex2d_s *v[2];
+};
+
+struct leaf2d_s
+{
+	struct line2d_s *lines;
+	int numlines;
+};
+
+struct map_s
+{
+	struct vertex2d_s *verts_2d;
+	int num_verts_2d;
+
+	struct line2d_s *lines_2d;
+	int num_lines_2d;
+
+	struct leaf2d_s *leafs_2d;
+	int num_leafs_2d;
+};
+
+extern struct map_s map;
 
 #endif /* __MAP_H__ */

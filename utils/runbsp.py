@@ -152,7 +152,8 @@ def recursiveBSP(objs):
     print "%d SIDEDEFS" % len(objs["SIDEDEFS"])
     print "%d SECTORS" % len(objs["SECTORS"])
 
-    vertexes = objs["VERTEXES"]
+    # negate each vertex y to match our coordinate system
+    vertexes = [(x, -y) for x, y in objs["VERTEXES"]]
     linedefs = objs["LINEDEFS"]
     sidedefs = objs["SIDEDEFS"]
     sectors = objs["SECTORS"]
