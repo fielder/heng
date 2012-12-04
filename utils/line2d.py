@@ -89,12 +89,12 @@ class Line2D(object):
         d2 = dot(self.normal, other.verts[1]) - self.dist
 
         frac = d1 / (d1 - d2)
-        mid_x = self.verts[0][0] + frac * (self.verts[1][0] - self.verts[0][0]);
-        mid_y = self.verts[0][1] + frac * (self.verts[1][1] - self.verts[0][1]);
+        mid_x = other.verts[0][0] + frac * (other.verts[1][0] - other.verts[0][0]);
+        mid_y = other.verts[0][1] + frac * (other.verts[1][1] - other.verts[0][1]);
         mid = (mid_x, mid_y)
 
-        front = copy.copy(self)
-        back = copy.copy(self)
+        front = copy.copy(other)
+        back = copy.copy(other)
 
         if d1 < 0:
             back.verts = (back.verts[0], mid)

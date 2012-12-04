@@ -465,7 +465,18 @@ def buildMap():
 
     for blines in b_leafs:
         _genLeaf(blines)
-        _genLeaf2D(blines)
+
+    if False:
+        #DEBUG: write out 2d structs from original wad data
+        for v in vertexes:
+            o_verts_2d.add(v)
+        for l in linedefs:
+            o_lines_2d.add(l["v1"], l["v2"])
+        for l in b_leafs:
+            o_leafs_2d.append({"firstline": 0, "numlines": 0})
+    else:
+        for blines in b_leafs:
+            _genLeaf2D(blines)
 
     for bnode in b_nodes:
         _genNode(bnode)
