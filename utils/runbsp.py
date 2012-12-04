@@ -282,13 +282,34 @@ def _line3DNormal(l):
 
 
 def _genSurface(surfdesc):
-#   xyz = []
-#   xyz.append( (, , ) )
-    # verts
-    # edges
-    # plane
-    # plane side
-    pass
+    normal, dist = _line3DNormal(surfdesc.bline)
+    planenum = o_planes.add(normal, dist)
+
+    vert_xyz = []
+    vert_xyz.append( (surfdesc.bline.verts[0][0], surfdesc.top,    surfdesc.bline.verts[0][1]) )
+    vert_xyz.append( (surfdesc.bline.verts[0][0], surfdesc.bottom, surfdesc.bline.verts[0][1]) )
+    vert_xyz.append( (surfdesc.bline.verts[1][0], surfdesc.bottom, surfdesc.bline.verts[1][1]) )
+    vert_xyz.append( (surfdesc.bline.verts[1][0], surfdesc.top,    surfdesc.bline.verts[1][1]) )
+    verts_idx = [o_verts.add(p) for p in vert_xyz]
+    verts_idx.append(verts_idx[0]) # wrap-around case
+
+    edges = [o_edges.add(v1, v2) for v1, v2 in zip(verts_idx, verts_idx[1:])]
+
+    first_surfedge = len(o_surfedges)
+    o_surfedges.extend(edges)
+    num_surfedges = len(edges)
+
+    bbox = Bounds()
+    for xyz in vert_xyz:
+        bbox.update(xyz)
+
+    s = {}
+    s["planenum"] = planenum
+    s["firstedge"] = first_surfedge
+    s["numedges"] = num_surfedges
+    s["bbox"] = bbox
+
+    o_surfs.append(s)
 
 
 def _lineSurfDescs(bline):
@@ -374,6 +395,9 @@ def _lineSurfDescs(bline):
 
     return ret
 
+#FIXME: It's possible to have a leaf with no surfaces, caused by the
+#       lines in the leaf to be simple 2-sided passable lines.
+#       This should stop happening when solid floors/ceilings are added.
 
 def _genLeaf(blines):
     first_surf = len(o_surfs)
@@ -384,8 +408,7 @@ def _genLeaf(blines):
 
     bbox = Bounds()
     for s in o_surfs[first_surf:]:
-        #TODO: update bbox
-        pass
+        bbox.update(s["bbox"])
 
     flags = 0x80000000
 
@@ -497,9 +520,9 @@ def buildMap():
 
     ret = {}
     ret["planes"] = o_planes.planes
-    ret["verts"] = o_verts.verts
+    ret["vertexes"] = o_verts.verts
     ret["edges"] = o_edges.edges
-    ret["surfs"] = o_surfs
+    ret["surfaces"] = o_surfs
     ret["surfedges"] = o_surfedges
     ret["nodes"] = o_nodes
     ret["leafs"] = o_leafs
