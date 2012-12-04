@@ -255,14 +255,70 @@ DrawPoint3D (float p[3], int c)
 	}
 }
 
+static int
+ClipLine3D (const float normal[3], float dist, float verts[2][3], float out[2][3])
+{
+	float d1, d2, frac;
+
+	d1 = Vec_Dot(verts[0], normal) - dist;
+	d2 = Vec_Dot(verts[1], normal) - dist;
+
+	if (d1 < 0.0 && d2 < 0.0)
+	{
+		return 0;
+	}
+	else if (d1 >= 0.0 && d2 >= 0.0)
+	{
+		Vec_Copy (verts[0], out[0]);
+		Vec_Copy (verts[1], out[1]);
+	}
+	else if (d1 < 0.0)
+	{
+		frac = d1 / (d1 - d2);
+		out[0][0] = verts[0][0] + frac * (verts[1][0] - verts[0][0]);
+		out[0][1] = verts[0][1] + frac * (verts[1][1] - verts[0][1]);
+		out[0][2] = verts[0][2] + frac * (verts[1][2] - verts[0][2]);
+		out[1][0] = verts[1][0];
+		out[1][1] = verts[1][1];
+		out[1][2] = verts[1][2];
+	}
+	else
+	{
+		frac = d2 / (d2 - d1);
+		out[0][0] = verts[1][0] + frac * (verts[0][0] - verts[1][0]);
+		out[0][1] = verts[1][1] + frac * (verts[0][1] - verts[1][1]);
+		out[0][2] = verts[1][2] + frac * (verts[0][2] - verts[1][2]);
+		out[1][0] = verts[0][0];
+		out[1][1] = verts[0][1];
+		out[1][2] = verts[0][2];
+	}
+
+	return 1;
+}
+
 static void
 DrawLine3D (float p1[3], float p2[3], int c)
 {
-	if (_ClipPoint(p1) && _ClipPoint(p2))
+	float verts[2][2][3];
+	int clipidx = 0;
+	int i;
+	struct viewplane_s *vp;
+
+	Vec_Copy (p1, verts[clipidx][0]);
+	Vec_Copy (p2, verts[clipidx][1]);
+
+	for (i = 0, vp = &r_vars.vplanes[0]; i < 4; i++, vp++)
 	{
-		int u1, v1, u2, v2;
-		if (_ProjectPoint(p1, &u1, &v1) && _ProjectPoint(p2, &u2, &v2))
-			DrawLine (u1, v1, u2, v2, c);
+		if (!ClipLine3D(vp->normal, vp->dist, verts[clipidx], verts[!clipidx]))
+			return;
+		clipidx ^= 1;
+	}
+
+	{
+		int u1=0, v1=0, u2=0, v2=0;
+		_ProjectPoint(verts[clipidx][0], &u1, &v1);
+		_ProjectPoint(verts[clipidx][1], &u2, &v2);
+		DrawLine (u1, v1, u2, v2, c);
 	}
 }
 
