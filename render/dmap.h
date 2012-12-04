@@ -3,6 +3,16 @@
 
 /* map structures as formatted on disk */
 
+struct dvertex_s
+{
+	float x, y, z;
+};
+
+struct dedge_s
+{
+	unsigned int v1, v2;
+};
+
 struct dvertex2d_s
 {
 	float x, y;

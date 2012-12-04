@@ -100,6 +100,17 @@ struct map_s
 };
 #endif
 
+struct vertex_s
+{
+	float xyz[3];
+};
+
+struct edge_s
+{
+	unsigned int v[2];
+	//TODO: cache
+};
+
 struct vertex2d_s
 {
 	float xy[2];
@@ -118,6 +129,12 @@ struct leaf2d_s
 
 struct map_s
 {
+	struct vertex_s *verts;
+	int num_verts;
+
+	struct edge_s *edges;
+	int num_edges;
+
 	struct vertex2d_s *verts_2d;
 	int num_verts_2d;
 

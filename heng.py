@@ -59,6 +59,12 @@ def _loadMap(path):
     raw = w.readLump("LEAFS_2D")
     hvars.c_api.LoadLeafs_2D(raw, len(raw))
 
+    raw = w.readLump("VERTEXES")
+    hvars.c_api.LoadVertexes(raw, len(raw))
+
+    raw = w.readLump("EDGES")
+    hvars.c_api.LoadEdges(raw, len(raw))
+
     w.close()
     print "Loaded \"%s\"" % path
 

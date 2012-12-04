@@ -290,9 +290,19 @@ DrawWorld (void)
 	int i;
 	float xyz[3];
 
+	/*
 	for (i = 0; i < map.num_lines_2d; i++)
 		DrawMapLine2D (map.lines_2d + i, 16 * 10 + 7);
+		*/
 
+	/*
+	for (i = 0; i < map.num_verts; i++)
+		DrawPoint3D (map.verts[i].xyz, 4);
+	*/
+	for (i = 0; i < map.num_edges; i++)
+		DrawLine3D (map.verts[map.edges[i].v[0]].xyz, map.verts[map.edges[i].v[1]].xyz, 4);
+
+	/*
 	for (i = 0; i < map.num_verts_2d; i++)
 	{
 		xyz[0] = map.verts_2d[i].xy[0];
@@ -300,6 +310,7 @@ DrawWorld (void)
 		xyz[2] = map.verts_2d[i].xy[1];
 		DrawPoint3D (xyz, 4);
 	}
+	*/
 
 	xyz[0] = 0; xyz[1] = 0; xyz[2] = 0;
 	for (i = 0; i < 64; i++)
