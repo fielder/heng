@@ -4,6 +4,7 @@ import struct
 
 import runbsp
 import writebsp
+import buildmap
 import wad
 
 
@@ -110,10 +111,13 @@ if __name__ == "__main__":
         objs["SIDEDEFS"] = _parseSIDEDEFS(w.readLumpFromOffset("SIDEDEFS", start))
         objs["SECTORS"] = _parseSECTORS(w.readLumpFromOffset("SECTORS", start))
 
-        # see how many nodes/leafs the original BSP'er generated for comparison
+        print "%d VERTEXES" % len(objs["VERTEXES"])
+        print "%d LINEDEFS" % len(objs["LINEDEFS"])
+        print "%d SIDEDEFS" % len(objs["SIDEDEFS"])
+        print "%d SECTORS" % len(objs["SECTORS"])
         print "%d NODES" % (len(w.readLumpFromOffset("NODES", start)) / 28)
         print "%d SSECTORS" % (len(w.readLumpFromOffset("SSECTORS", start)) / 4)
 
-        runbsp.recursiveBSP(objs)
-        objs = runbsp.buildMap()
-        writebsp.writeFile(mapname, "%s.wad" % mapname, objs)
+        bsp_objs = runbsp.runBSP(objs)
+#       output = buildmap.buildMap(bsp_objs)
+#       writebsp.writeFile(mapname, "%s.wad" % mapname, output)
