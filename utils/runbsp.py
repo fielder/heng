@@ -33,7 +33,7 @@ class BLine(line2d.Line2D):
         super(BLine, self).__init__(v1, v2)
 
 
-ChoiseParams = collections.namedtuple("ChoiseParams", ["index", "axial", "front", "back", "cross", "imbalance"])
+ChoiseParams = collections.namedtuple("ChoiseParams", ["index", "axial", "front", "back", "on", "cross", "imbalance"])
 
 #TODO: Probably check against a few different cutoffs; the idea is that
 #      a lower cutoff (gives a better balanced tree) might be worth a
@@ -86,9 +86,9 @@ def _recursiveBSP(lines):
     # find which lines can act as a partitioning node
     choiceparams = []
     for idx, l in enumerate(lines):
-        front, back, cross = l.countSides(lines)
+        front, back, cross, on = l.countSides(lines)
         if cross or (front and back):
-            cp = ChoiseParams(idx, l.isAxial(), front, back, cross, abs(front - back) / float(len(lines)))
+            cp = ChoiseParams(idx, l.isAxial(), front, back, on, cross, abs(front - back) / float(len(lines)))
             choiceparams.append(cp)
 
     if not choiceparams:
@@ -101,8 +101,8 @@ def _recursiveBSP(lines):
     cp = _chooseNodeLine(choiceparams)
     nodeline = lines[cp.index]
 
-    frontlines, backlines = nodeline.splitLines(lines)
-    b_numsplits += len(frontlines) + len(backlines) - len(lines)
+    frontlines, backlines, onlines = nodeline.splitLines(lines)
+    b_numsplits += len(frontlines) + len(backlines) + len(onlines) - len(lines)
 
     if not frontlines:
         raise Exception("node chosen with no front space")
@@ -112,6 +112,7 @@ def _recursiveBSP(lines):
     idx = len(b_nodes)
     b_nodes.append({})
     b_nodes[idx]["line"] = line2d.Line2D(nodeline.verts[0], nodeline.verts[1])
+    b_nodes[idx]["on"] = onlines
     b_nodes[idx]["front"] = _recursiveBSP(frontlines)
     b_nodes[idx]["back"] = _recursiveBSP(backlines)
 
@@ -156,11 +157,12 @@ def runBSP(objs):
     b_numsplits = 0
 
     print ""
-    print "Generating BSP tree..."
 
     blines = _createBLines()
     print "%d blines" % len(blines)
+    print ""
 
+    print "Generating BSP tree..."
     _recursiveBSP(blines)
 
     print "%d nodes" % len(b_nodes)

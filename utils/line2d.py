@@ -51,32 +51,16 @@ class Line2D(object):
         return [self.pointSide(p) for p in points]
 
     def lineSide(self, other):
-        """
-        Find which side other lies on. Note if the other line is
-        colinear, we use the other's normal to determine whether
-        it's on our front or back side.
-        """
-
         s1, s2 = self.pointsSides( (other.verts[0], other.verts[1]) )
 
         if s1 == s2:
-            if s1 == SIDE_ON:
-                x = other.verts[0][0] + other.normal[0] * 8.0
-                y = other.verts[0][1] + other.normal[1] * 8.0
-                side = self.pointSide((x, y))
-            else:
-                # both on one side
-                side = s1
+            side = s1
         elif s1 == SIDE_ON:
             side = s2
         elif s2 == SIDE_ON:
             side = s1
         else:
             side = SIDE_CROSS
-
-        if side == SIDE_ON:
-            # shouldn't happen
-            raise Exception("lineSide() gave ON")
 
         return side
 
@@ -108,27 +92,37 @@ class Line2D(object):
     def splitLine(self, other):
         side = self.lineSide(other)
 
-        if side == SIDE_FRONT:
+        if side == SIDE_ON:
+            front = None
+            back = None
+            on = other
+        elif side == SIDE_FRONT:
             front = other
             back = None
+            on = None
         elif side == SIDE_BACK:
             front = None
             back = other
+            on = None
         else:
             front, back = self._splitCrossingLine(other)
+            on = None
 
-        return (front, back)
+        return (front, back, on)
 
     def splitLines(self, lines):
         front = []
         back = []
+        on = []
         for l in lines:
-            f, b = self.splitLine(l)
+            f, b, o = self.splitLine(l)
             if f:
                 front.append(f)
             if b:
                 back.append(b)
-        return (front, back)
+            if o:
+                on.append(b)
+        return (front, back, on)
 
     def countSides(self, lines):
         sides = [self.lineSide(l) for l in lines]
@@ -136,5 +130,6 @@ class Line2D(object):
         front = sides.count(SIDE_FRONT)
         back = sides.count(SIDE_BACK)
         cross = sides.count(SIDE_CROSS)
+        on = sides.count(SIDE_ON)
 
-        return (front, back, cross)
+        return (front, back, cross, on)
