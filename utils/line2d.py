@@ -92,21 +92,20 @@ class Line2D(object):
     def splitLine(self, other):
         side = self.lineSide(other)
 
+        front = None
+        back = None
+        on = None
+
         if side == SIDE_ON:
-            front = None
-            back = None
             on = other
         elif side == SIDE_FRONT:
             front = other
-            back = None
-            on = None
         elif side == SIDE_BACK:
-            front = None
             back = other
-            on = None
-        else:
+        elif side == SIDE_CROSS:
             front, back = self._splitCrossingLine(other)
-            on = None
+        else:
+            raise Exception("unknown side %s" % str(side))
 
         return (front, back, on)
 
