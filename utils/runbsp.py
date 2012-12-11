@@ -42,14 +42,9 @@ IMBALANCE_CUTOFF = 0.5
 
 
 def _chooseNodeLine(choiceparams):
+    # axial lines
     axial = filter(lambda cp: cp.axial, choiceparams)
-    nonaxial = filter(lambda cp: not cp.axial, choiceparams)
-
-    # sort the candidates by how well they divide the space; ideally
-    # we would get a line that divides the space exactly in half with
-    # the fewest splits
     by_imbalance_axial = sorted(axial, key=lambda cp: cp.imbalance)
-    by_imbalance_nonaxial = sorted(nonaxial, key=lambda cp: cp.imbalance)
 
     best_axial = None
     for cp in by_imbalance_axial:
@@ -59,6 +54,12 @@ def _chooseNodeLine(choiceparams):
             best_axial = cp
         elif cp.cross < best_axial.cross:
             best_axial = cp
+    if best_axial:
+        return best_axial
+
+    # non-axial lines
+    nonaxial = filter(lambda cp: not cp.axial, choiceparams)
+    by_imbalance_nonaxial = sorted(nonaxial, key=lambda cp: cp.imbalance)
 
     best_nonaxial = None
     for cp in by_imbalance_nonaxial:
@@ -68,16 +69,11 @@ def _chooseNodeLine(choiceparams):
             best_nonaxial = cp
         elif cp.cross < best_nonaxial.cross:
             best_nonaxial = cp
+    if best_nonaxial:
+        return best_nonaxial
 
-    if best_axial:
-        best = best_axial
-    elif best_nonaxial:
-        best = best_nonaxial
-    else:
-        # shouldn't happen
-        raise Exception("no node chosen")
-
-    return best
+    # shouldn't happen
+    raise Exception("no node chosen")
 
 
 def _recursiveBSP(lines):
@@ -99,7 +95,7 @@ def _recursiveBSP(lines):
 
     # find a good partitioning plane
     cp = _chooseNodeLine(choiceparams)
-    nodeline = lines[cp.index]
+    nodeline = line2d.Line2D(lines[cp.index].verts[0], lines[cp.index].verts[1])
 
     frontlines, backlines, onlines = nodeline.splitLines(lines)
     b_numsplits += len(frontlines) + len(backlines) + len(onlines) - len(lines)
@@ -111,7 +107,7 @@ def _recursiveBSP(lines):
 
     idx = len(b_nodes)
     b_nodes.append({})
-    b_nodes[idx]["line"] = line2d.Line2D(nodeline.verts[0], nodeline.verts[1])
+    b_nodes[idx]["line"] = nodeline
     b_nodes[idx]["on"] = onlines
     b_nodes[idx]["front"] = _recursiveBSP(frontlines)
     b_nodes[idx]["back"] = _recursiveBSP(backlines)
