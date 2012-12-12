@@ -16,6 +16,6 @@ if __name__ == "__main__":
     for mapname in sys.argv[2:]:
         inmap.load(w, mapname)
 
-        bsp_objs = runbsp.runBSP()
-#       output = buildmap.buildMap(bsp_objs)
-#       writebsp.writeFile(mapname, "%s.wad" % mapname, output)
+        runbsp.runBSP()
+        buildmap.buildMap()
+#       writebsp.writeFile(mapname, "%s.wad" % mapname)

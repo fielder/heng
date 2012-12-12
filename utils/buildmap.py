@@ -4,6 +4,9 @@
 import types
 import collections
 
+import inmap
+import runbsp
+
 SurfDesc = collections.namedtuple("SurfDesc", ["bline", "top", "bottom", "texture", "xoff", "yoff"])
 
 o_planes = None
@@ -34,8 +37,12 @@ class Bounds(object):
     def update(self, other):
         if isinstance(other, Bounds):
             # other bounds
-            points = [other.mins, other.maxs]
-        elif isinstance(other[0], float) or isinstance(other[0], int):
+            for i in xrange(3):
+                self.mins[i] = min(self.mins[i], other.mins[i])
+                self.maxs[i] = max(self.maxs[i], other.maxs[i])
+            return
+
+        if isinstance(other[0], float) or isinstance(other[0], int):
             # single point
             points = [other]
         else:
@@ -43,9 +50,9 @@ class Bounds(object):
             points = other
 
         for i in xrange(3):
-            vals = [self.mins[i], self.maxs[i]] + [p[i] for p in points]
-            self.mins[i] = float(reduce(min, vals))
-            self.maxs[i] = float(reduce(max, vals))
+            vals = [p[i] for p in points]
+            self.mins[i] = float(min(self.mins[i], min(vals)))
+            self.maxs[i] = float(max(self.maxs[i], max(vals)))
 
 
 class PlaneDump(object):
@@ -137,8 +144,10 @@ def _genSurface(surfdesc):
     num_surfedges = len(edges)
 
     bbox = Bounds()
+    print vert_xyz
     for xyz in vert_xyz:
         bbox.update(xyz)
+    print bbox
 
     s = {}
     s["planenum"] = planenum
@@ -149,7 +158,7 @@ def _genSurface(surfdesc):
     o_surfaces.append(s)
 
 
-def _lineSurfDescs(bline):
+def _lineSurfDesc(bline):
     if bline.is_backside:
         sidenum_front = bline.linedef["sidenum"][1]
         sidenum_back = bline.linedef["sidenum"][0]
@@ -157,15 +166,15 @@ def _lineSurfDescs(bline):
         sidenum_front = bline.linedef["sidenum"][0]
         sidenum_back = bline.linedef["sidenum"][1]
 
-    sidedef_front = sidedefs[sidenum_front]
+    sidedef_front = inmap.sidedefs[sidenum_front]
     if sidenum_back != -1:
-        sidedef_back = sidedefs[sidenum_back]
+        sidedef_back = inmap.sidedefs[sidenum_back]
     else:
         sidedef_back = None
 
-    front_sector = sectors[sidedef_front["sector"]]
+    front_sector = inmap.sectors[sidedef_front["sector"]]
     if sidedef_back is not None:
-        back_sector = sectors[sidedef_back["sector"]]
+        back_sector = inmap.sectors[sidedef_back["sector"]]
     else:
         back_sector = None
 
@@ -239,7 +248,7 @@ def _lineSurfDescs(bline):
 def _genLeaf(blines):
     first_surf = len(o_surfaces)
     for bline in blines:
-        for surfdesc in _lineSurfDescs(bline):
+        for surfdesc in _lineSurfDesc(bline):
             _genSurface(surfdesc)
     num_surfs = len(o_surfaces) - first_surf
 
@@ -247,10 +256,8 @@ def _genLeaf(blines):
     for s in o_surfaces[first_surf:]:
         bbox.update(s["bbox"])
 
-    flags = 0x80000000
-
     ol = {}
-    ol["flags"] = flags
+    ol["flags"] = 0x80000000
     ol["bbox"] = bbox
     ol["firstsurface"] = first_surf
     ol["numsurfaces"] = num_surfs
@@ -309,7 +316,7 @@ def _genLeaf2D(blines):
 
 # portals
 
-def buildMap(objs):
+def buildMap():
     global o_planes
     global o_verts
     global o_edges
@@ -339,8 +346,8 @@ def buildMap(objs):
     o_lines_2d = EdgeDump()
     o_leafs_2d = []
 
-#   for blines in objs["leafs"]:
-#       _genLeaf(blines)
+    for blines in runbsp.b_leafs:
+        _genLeaf(blines)
 
 #   for blines in objs["leafs"]:
 #       _genLeaf2D(blines)

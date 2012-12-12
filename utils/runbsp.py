@@ -161,11 +161,5 @@ def runBSP():
     print "%d nodes" % len(b_nodes)
     print "%d leafs" % len(b_leafs)
     print "%d splits" % b_numsplits
-    print "%d lines on nodes" % b_numon
     print "%d lines" % b_numlines
-
-    ret = {}
-    ret["nodes"] = b_nodes
-    ret["leafs"] = b_leafs
-
-    return ret
+    print "%d lines on nodes" % b_numon
