@@ -119,5 +119,5 @@ if __name__ == "__main__":
         print "%d SSECTORS" % (len(w.readLumpFromOffset("SSECTORS", start)) / 4)
 
         bsp_objs = runbsp.runBSP(objs)
-#       output = buildmap.buildMap(bsp_objs)
+        output = buildmap.buildMap(bsp_objs)
 #       writebsp.writeFile(mapname, "%s.wad" % mapname, output)

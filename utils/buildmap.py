@@ -1,3 +1,6 @@
+#TODO: check for degenerate faces
+#TODO: make sure all surfaces on a node reference *exactly* that node's plane
+
 import types
 import collections
 
@@ -6,7 +9,9 @@ SurfDesc = collections.namedtuple("SurfDesc", ["bline", "top", "bottom", "textur
 o_planes = None
 o_verts = None
 o_edges = None
-o_surfs = []
+o_sectors = []
+o_faces = []
+o_surfaces = []
 o_surfedges = []
 o_nodes = []
 o_leafs = []
@@ -15,28 +20,32 @@ o_lines_2d = None
 o_leafs_2d = []
 
 
-class Bounds(list):
-    def __init__(self, *args, **kwargs):
-        super(Bounds, self).__init__(*args, **kwargs)
-
+class Bounds(object):
+    def __init__(self):
         self.mins = [999999.0, 999999.0, 999999.0]
         self.maxs = [-999999.0, -999999.0, -999999.0]
-        self.append(self.mins)
-        self.append(self.maxs)
 
-    def update(self, points):
-        if type(points[0]) in [types.FloatType, types.IntType]:
-            # a single point passed in
-            points = [points]
+    def __repr__(self):
+        return repr((self.mins, self.maxs))
 
-        xyz = []
-        xyz.append([p[0] for p in points])
-        xyz.append([p[1] for p in points])
-        xyz.append([p[2] for p in points])
+    def __getitem__(self, i):
+        return (self.mins, self.maxs)[i]
+
+    def update(self, other):
+        if isinstance(other, Bounds):
+            # other bounds
+            points = [other.mins, other.maxs]
+        elif isinstance(other[0], float) or isinstance(other[0], int):
+            # single point
+            points = [other]
+        else:
+            # list/tuple of points
+            points = other
 
         for i in xrange(3):
-            self.mins[i] = min(self.mins[i], reduce(min, xyz[i]))
-            self.maxs[i] = max(self.mins[i], reduce(max, xyz[i]))
+            vals = [self.mins[i], self.maxs[i]] + [p[i] for p in points]
+            self.mins[i] = float(reduce(min, vals))
+            self.maxs[i] = float(reduce(max, vals))
 
 
 class PlaneDump(object):
@@ -137,7 +146,7 @@ def _genSurface(surfdesc):
     s["numedges"] = num_surfedges
     s["bbox"] = bbox
 
-    o_surfs.append(s)
+    o_surfaces.append(s)
 
 
 def _lineSurfDescs(bline):
@@ -228,14 +237,14 @@ def _lineSurfDescs(bline):
 #       This should stop happening when solid floors/ceilings are added.
 
 def _genLeaf(blines):
-    first_surf = len(o_surfs)
+    first_surf = len(o_surfaces)
     for bline in blines:
         for surfdesc in _lineSurfDescs(bline):
             _genSurface(surfdesc)
-    num_surfs = len(o_surfs) - first_surf
+    num_surfs = len(o_surfaces) - first_surf
 
     bbox = Bounds()
-    for s in o_surfs[first_surf:]:
+    for s in o_surfaces[first_surf:]:
         bbox.update(s["bbox"])
 
     flags = 0x80000000
@@ -288,11 +297,25 @@ def _genLeaf2D(blines):
     o_leafs_2d.append(leaf)
 
 
+# verts
+# planes
+# edges
+# sectors
+# faces
+# surfaces
+# leafs
+# nodes
+# surf edges
+
+# portals
+
 def buildMap(objs):
     global o_planes
     global o_verts
     global o_edges
-    global o_surfs
+    global o_sectors
+    global o_faces
+    global o_surfaces
     global o_surfedges
     global o_nodes
     global o_leafs
@@ -306,7 +329,9 @@ def buildMap(objs):
     o_planes = PlaneDump()
     o_verts = VertexDump()
     o_edges = EdgeDump()
-    o_surfs = []
+    o_sectors = []
+    o_faces = []
+    o_surfaces = []
     o_surfedges = []
     o_nodes = []
     o_leafs = []
@@ -314,43 +339,38 @@ def buildMap(objs):
     o_lines_2d = EdgeDump()
     o_leafs_2d = []
 
-    for blines in objs["leafs"]:
-        _genLeaf(blines)
+#   for blines in objs["leafs"]:
+#       _genLeaf(blines)
 
-    if False:
-        #DEBUG: write out 2d structs from original wad data
-        for v in vertexes:
-            o_verts_2d.add(v)
-        for l in linedefs:
-            o_lines_2d.add(l["v1"], l["v2"])
-        for l in objs["leafs"]:
-            o_leafs_2d.append({"firstline": 0, "numlines": 0})
-    else:
-        for blines in objs["leafs"]:
-            _genLeaf2D(blines)
+#   for blines in objs["leafs"]:
+#       _genLeaf2D(blines)
 
-    for bnode in objs["nodes"]:
-        _genNode(bnode)
+#   for bnode in objs["nodes"]:
+#       _genNode(bnode)
 
-    if o_nodes:
-        _recursiveUpdateOutputNodeBBox(o_nodes[0])
+#   if o_nodes:
+#       _recursiveUpdateOutputNodeBBox(o_nodes[0])
 
-    print "%d output planes" % len(o_planes.planes)
-    print "%d output verts" % len(o_verts.verts)
-    print "%d output edges" % len(o_edges.edges)
-    print "%d output surfs" % len(o_surfs)
-    print "%d output surfedges" % len(o_surfedges)
-    print "%d output nodes" % len(o_nodes)
-    print "%d output leafs" % len(o_leafs)
-    print "%d output 2d verts" % len(o_verts_2d.verts)
-    print "%d output 2d lines" % len(o_lines_2d.edges)
-    print "%d output 2d leafs" % len(o_leafs_2d)
+    print "%d planes" % len(o_planes.planes)
+    print "%d verts" % len(o_verts.verts)
+    print "%d edges" % len(o_edges.edges)
+    print "%d sectors" % len(o_sectors)
+    print "%d faces" % len(o_faces)
+    print "%d surfs" % len(o_surfaces)
+    print "%d surfedges" % len(o_surfedges)
+    print "%d nodes" % len(o_nodes)
+    print "%d leafs" % len(o_leafs)
+    print "%d 2d verts" % len(o_verts_2d.verts)
+    print "%d 2d lines" % len(o_lines_2d.edges)
+    print "%d 2d leafs" % len(o_leafs_2d)
 
     ret = {}
     ret["planes"] = o_planes.planes
     ret["vertexes"] = o_verts.verts
     ret["edges"] = o_edges.edges
-    ret["surfaces"] = o_surfs
+    ret["sectors"] = o_sectors
+    ret["faces"] = o_faces
+    ret["surfaces"] = o_surfaces
     ret["surfedges"] = o_surfedges
     ret["nodes"] = o_nodes
     ret["leafs"] = o_leafs

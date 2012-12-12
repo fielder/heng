@@ -14,6 +14,8 @@ sectors = None
 b_nodes = []
 b_leafs = []
 b_numsplits = 0
+b_numon = 0
+b_numlines = 0
 
 
 class BLine(line2d.Line2D):
@@ -78,6 +80,8 @@ def _chooseNodeLine(choiceparams):
 
 def _recursiveBSP(lines):
     global b_numsplits
+    global b_numon
+    global b_numlines
 
     # find which lines can act as a partitioning node
     choiceparams = []
@@ -88,6 +92,8 @@ def _recursiveBSP(lines):
             choiceparams.append(cp)
 
     if not choiceparams:
+        b_numlines += len(lines)
+
         # no line splits the space into 2 parts; must be a leaf
         idx = len(b_leafs)
         b_leafs.append(lines)
@@ -99,6 +105,8 @@ def _recursiveBSP(lines):
 
     frontlines, backlines, onlines = nodeline.splitLines(lines)
     b_numsplits += len(frontlines) + len(backlines) + len(onlines) - len(lines)
+    b_numon += len(onlines)
+    b_numlines += len(onlines)
 
     if not frontlines:
         raise Exception("node chosen with no front space")
@@ -141,6 +149,8 @@ def runBSP(objs):
     global b_nodes
     global b_leafs
     global b_numsplits
+    global b_numon
+    global b_numlines
 
     # negate each vertex y to match our coordinate system
     vertexes = [(x, -y) for x, y in objs["VERTEXES"]]
@@ -151,6 +161,8 @@ def runBSP(objs):
     b_nodes = []
     b_leafs = []
     b_numsplits = 0
+    b_numon = 0
+    b_numlines = 0
 
     print ""
 
@@ -164,6 +176,8 @@ def runBSP(objs):
     print "%d nodes" % len(b_nodes)
     print "%d leafs" % len(b_leafs)
     print "%d splits" % b_numsplits
+    print "%d lines on nodes" % b_numon
+    print "%d lines" % b_numlines
 
     ret = {}
     ret["nodes"] = b_nodes
