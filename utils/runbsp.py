@@ -1,14 +1,9 @@
 import collections
 
 import line2d
+import inmap
 
 #TODO: fix up t-junctions for 2-sided lines, where only one gets split
-
-# original map objects from the WAD
-vertexes = None
-linedefs = None
-sidedefs = None
-sectors = None
 
 # part of the BSP process
 b_nodes = []
@@ -26,8 +21,8 @@ class BLine(line2d.Line2D):
         # 2nd sidenum sidedef
         self.is_backside = is_backside
 
-        v1 = (float(vertexes[linedef["v1"]][0]), float(vertexes[linedef["v1"]][1]))
-        v2 = (float(vertexes[linedef["v2"]][0]), float(vertexes[linedef["v2"]][1]))
+        v1 = (float(inmap.vertexes[linedef["v1"]][0]), float(inmap.vertexes[linedef["v1"]][1]))
+        v2 = (float(inmap.vertexes[linedef["v2"]][0]), float(inmap.vertexes[linedef["v2"]][1]))
 
         if self.is_backside:
             v1, v2 = v2, v1
@@ -126,37 +121,27 @@ def _recursiveBSP(lines):
 def _createBLines():
     lines = []
 
-    for l in linedefs:
+    for l in inmap.linedefs:
         sidenum0, sidenum1 = l["sidenum"]
 
-        if sidenum0 < 0 or sidenum0 >= len(sidedefs):
+        if sidenum0 < 0 or sidenum0 >= len(inmap.sidedefs):
             raise Exception("bad front sidedef %d" % sidenum0)
         lines.append(BLine(l))
 
         # create a line running in the opposite direction for 2-sided
-        # linedefs
+        # linedef
         if sidenum1 != -1:
             lines.append(BLine(l, is_backside=True))
 
     return lines
 
 
-def runBSP(objs):
-    global vertexes
-    global linedefs
-    global sidedefs
-    global sectors
+def runBSP():
     global b_nodes
     global b_leafs
     global b_numsplits
     global b_numon
     global b_numlines
-
-    # negate each vertex y to match our coordinate system
-    vertexes = [(x, -y) for x, y in objs["VERTEXES"]]
-    linedefs = objs["LINEDEFS"]
-    sidedefs = objs["SIDEDEFS"]
-    sectors = objs["SECTORS"]
 
     b_nodes = []
     b_leafs = []
