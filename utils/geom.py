@@ -13,6 +13,29 @@ def dot2d(a, b):
     return a[0] * b[0] + a[1] * b[1]
 
 
+def lineFrac2D(p1, p2, frac):
+    return ( p1[0] + frac * (p2[0] - p1[0]),
+             p1[1] + frac * (p2[1] - p1[1]) )
+
+
+def lineFrac3D(p1, p2, frac):
+    return ( p1[0] + frac * (p2[0] - p1[0]),
+             p1[1] + frac * (p2[1] - p1[1]),
+             p1[2] + frac * (p2[2] - p1[2]) )
+
+
+def classifyDist(dist):
+    if math.fabs(dist) < SIDE_EPSILON:
+        side = SIDE_ON
+    elif dist < 0:
+        side = SIDE_BACK
+    elif dist > 0:
+        side = SIDE_FRONT
+    else:
+        raise Exception("shouldn't happen")
+    return side
+
+
 class Line2D(object):
     """
     A line segment on the 2D x-y plane.
@@ -34,18 +57,7 @@ class Line2D(object):
         return math.fabs(self.normal[0]) == 1.0 or math.fabs(self.normal[1]) == 1.0
 
     def pointSide(self, p):
-        d = dot2d(self.normal, p) - self.dist
-
-        if math.fabs(d) < SIDE_EPSILON:
-            side = SIDE_ON
-        elif d < 0:
-            side = SIDE_BACK
-        elif d > 0:
-            side = SIDE_FRONT
-        else:
-            raise Exception("shouldn't happen")
-
-        return side
+        return classifyDist(dot2d(self.normal, p) - self.dist)
 
     def pointsSides(self, points):
         return [self.pointSide(p) for p in points]
@@ -69,13 +81,11 @@ class Line2D(object):
         It's assumed other is known to cross.
         """
 
-        d1 = dot2d(self.normal, other.verts[0]) - self.dist
-        d2 = dot2d(self.normal, other.verts[1]) - self.dist
-
-        frac = d1 / (d1 - d2)
-        mid_x = other.verts[0][0] + frac * (other.verts[1][0] - other.verts[0][0]);
-        mid_y = other.verts[0][1] + frac * (other.verts[1][1] - other.verts[0][1]);
-        mid = (mid_x, mid_y)
+        v1 = other.verts[0]
+        v2 = other.verts[1]
+        d1 = dot2d(self.normal, v1) - self.dist
+        d2 = dot2d(self.normal, v2) - self.dist
+        mid = lineFrac2D(v1, v2, d1 / (d1 - d2))
 
         front = copy.copy(other)
         back = copy.copy(other)
@@ -195,20 +205,44 @@ class ChopSurface2D(object):
         self.nodes = []
 
     def setup(self, verts):
-        self.verts = list(verts)
+        self.verts = verts[:]
         self.nodes = [None] * len(self.verts)
 
     def chopWithLine(self, line):
-#       dots = [dot2d(line.normal, v) - line.dist for v in self.verts]
-#       dots.append(dots[-1])
+        verts = self.verts[:]
+        verts.append(verts[0]) # wrap-around case for easier looping
+        dists = [(dot2d(line.normal, v) - line.dist) for v in verts]
+        sides = [classifyDist(d) for d in dists]
 
-        front = ChopSurface2D()
-        back = ChopSurface2D()
+        front_chop = ChopSurface2D()
+        back_chop = ChopSurface2D()
 
-#       for d1, d2, node in zip(dots, dots[1:], self.nodes):
-#           pass
+        for idx in xrange(len(self.verts)):
+            node = self.nodes[idx]
+            v1, v2 = verts[idx:idx + 2]
+            d1, d2 = dists[idx:idx + 2]
+            s1, s2 = sides[idx:idx + 2]
 
-        #TODO: ...
-        #TODO: ...
+            if s1 in (SIDE_ON, SIDE_FRONT):
+                front_chop.verts.append(v1)
+                front_chop.nodes.append(node)
 
-        return front, back
+            if s1 in (SIDE_ON, SIDE_BACK):
+                back_chop.verts.append(v1)
+                back_chop.nodes.append(node)
+
+#### ???
+            if (s1, s2) == (SIDE_FRONT, SIDE_BACK):
+                #...
+                pass
+            elif (s1, s2) == (SIDE_BACK, SIDE_FRONT):
+                mid = lineFrac2D(v1, v2, d1 / (d1 - d2))
+
+                back_chop.verts.append(mid)
+                back_chop.nodes.append(line)
+
+                front_chop.verts.append(mid)
+                front_chop.nodes.append(node)
+#### ???
+
+        return front_chop, back_chop
