@@ -9,7 +9,7 @@ SIDE_BACK  = 2
 SIDE_CROSS = 3
 
 
-def dot(a, b):
+def dot2d(a, b):
     return a[0] * b[0] + a[1] * b[1]
 
 
@@ -25,7 +25,7 @@ class Line2D(object):
         normal = (dy, -dx)
         len_ = math.hypot(*normal)
         self.normal = (normal[0] / len_, normal[1] / len_)
-        self.dist = dot(self.verts[0], self.normal)
+        self.dist = dot2d(self.verts[0], self.normal)
 
     def delta(self):
         return (self.verts[1][0] - self.verts[0][0], self.verts[1][1] - self.verts[0][1])
@@ -34,7 +34,7 @@ class Line2D(object):
         return math.fabs(self.normal[0]) == 1.0 or math.fabs(self.normal[1]) == 1.0
 
     def pointSide(self, p):
-        d = dot(self.normal, p) - self.dist
+        d = dot2d(self.normal, p) - self.dist
 
         if math.fabs(d) < SIDE_EPSILON:
             side = SIDE_ON
@@ -69,8 +69,8 @@ class Line2D(object):
         It's assumed other is known to cross.
         """
 
-        d1 = dot(self.normal, other.verts[0]) - self.dist
-        d2 = dot(self.normal, other.verts[1]) - self.dist
+        d1 = dot2d(self.normal, other.verts[0]) - self.dist
+        d2 = dot2d(self.normal, other.verts[1]) - self.dist
 
         frac = d1 / (d1 - d2)
         mid_x = other.verts[0][0] + frac * (other.verts[1][0] - other.verts[0][0]);
@@ -132,3 +132,56 @@ class Line2D(object):
         on = sides.count(SIDE_ON)
 
         return (front, back, cross, on)
+
+
+class ChopSurface2D(object):
+    def __init__(self):
+        # in CCW order
+        self.verts = []
+
+        # one node reference for each chopsurf side
+        self.nodes = []
+
+    def setup(self, mins, maxs):
+        a = 32.0
+        v1 = (mins[0] - a, mins[1] - a)
+        v2 = (mins[0] - a, maxs[1] + a)
+        v3 = (maxs[0] + a, maxs[1] + a)
+        v4 = (maxs[0] + a, mins[1] - a)
+        self.verts = [v1, v2, v3, v4]
+
+    def chop(self, line2d):
+        #TODO: ...
+        pass
+
+
+class Bounds3D(object):
+    def __init__(self):
+        self.mins = [999999.0, 999999.0, 999999.0]
+        self.maxs = [-999999.0, -999999.0, -999999.0]
+
+    def __repr__(self):
+        return repr((self.mins, self.maxs))
+
+    def __getitem__(self, i):
+        return (self.mins, self.maxs)[i]
+
+    def update(self, other):
+        if isinstance(other, Bounds3D):
+            # other bounds
+            for i in xrange(3):
+                self.mins[i] = min(self.mins[i], other.mins[i])
+                self.maxs[i] = max(self.maxs[i], other.maxs[i])
+            return
+
+        if isinstance(other[0], float) or isinstance(other[0], int):
+            # single point
+            points = [other]
+        else:
+            # list/tuple of points
+            points = other
+
+        for i in xrange(3):
+            vals = [p[i] for p in points]
+            self.mins[i] = float(min(self.mins[i], min(vals)))
+            self.maxs[i] = float(max(self.maxs[i], max(vals)))

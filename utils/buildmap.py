@@ -1,11 +1,13 @@
 #TODO: check for degenerate faces
 #TODO: make sure all surfaces on a node reference *exactly* that node's plane
+#TODO: face dump
 
 import types
 import collections
 
 import inmap
 import runbsp
+import geom
 
 SurfDesc = collections.namedtuple("SurfDesc", ["bline", "top", "bottom", "texture", "xoff", "yoff"])
 
@@ -21,38 +23,6 @@ o_leafs = []
 o_verts_2d = None
 o_lines_2d = None
 o_leafs_2d = []
-
-
-class Bounds(object):
-    def __init__(self):
-        self.mins = [999999.0, 999999.0, 999999.0]
-        self.maxs = [-999999.0, -999999.0, -999999.0]
-
-    def __repr__(self):
-        return repr((self.mins, self.maxs))
-
-    def __getitem__(self, i):
-        return (self.mins, self.maxs)[i]
-
-    def update(self, other):
-        if isinstance(other, Bounds):
-            # other bounds
-            for i in xrange(3):
-                self.mins[i] = min(self.mins[i], other.mins[i])
-                self.maxs[i] = max(self.maxs[i], other.maxs[i])
-            return
-
-        if isinstance(other[0], float) or isinstance(other[0], int):
-            # single point
-            points = [other]
-        else:
-            # list/tuple of points
-            points = other
-
-        for i in xrange(3):
-            vals = [p[i] for p in points]
-            self.mins[i] = float(min(self.mins[i], min(vals)))
-            self.maxs[i] = float(max(self.maxs[i], max(vals)))
 
 
 class PlaneDump(object):
@@ -124,6 +94,12 @@ def _line3DNormal(l):
     dist = l.dist
     return (normal, dist)
 
+def _floor3DNormal(elevation):
+    return ((0.0, 1.0, 0.0), float(elevation))
+
+def _ceiling3DNormal(elevation):
+    return ((0.0, -1.0, 0.0), -float(elevation))
+
 
 def _genSurface(surfdesc):
     normal, dist = _line3DNormal(surfdesc.bline)
@@ -135,7 +111,7 @@ def _genSurface(surfdesc):
     vert_xyz.append( (surfdesc.bline.verts[1][0], surfdesc.bottom, surfdesc.bline.verts[1][1]) )
     vert_xyz.append( (surfdesc.bline.verts[1][0], surfdesc.top,    surfdesc.bline.verts[1][1]) )
     verts_idx = [o_verts.add(p) for p in vert_xyz]
-    verts_idx.append(verts_idx[0]) # wrap-around case
+    verts_idx.append(verts_idx[0]) # add wrap-around for zipping
 
     edges = [o_edges.add(v1, v2) for v1, v2 in zip(verts_idx, verts_idx[1:])]
 
@@ -143,11 +119,9 @@ def _genSurface(surfdesc):
     o_surfedges.extend(edges)
     num_surfedges = len(edges)
 
-    bbox = Bounds()
-    print vert_xyz
+    bbox = geom.Bounds3D()
     for xyz in vert_xyz:
         bbox.update(xyz)
-    print bbox
 
     s = {}
     s["planenum"] = planenum
@@ -241,9 +215,6 @@ def _lineSurfDesc(bline):
 
     return ret
 
-#FIXME: It's possible to have a leaf with no surfaces, caused by the
-#       lines in the leaf to be simple 2-sided passable lines.
-#       This should stop happening when solid floors/ceilings are added.
 
 def _genLeaf(blines):
     first_surf = len(o_surfaces)
@@ -252,7 +223,7 @@ def _genLeaf(blines):
             _genSurface(surfdesc)
     num_surfs = len(o_surfaces) - first_surf
 
-    bbox = Bounds()
+    bbox = geom.Bounds3D()
     for s in o_surfaces[first_surf:]:
         bbox.update(s["bbox"])
 
@@ -269,7 +240,7 @@ def _genNode(bnode):
     normal, dist = _line3DNormal(bnode["line"])
 
     flags = 0x0
-    bbox = Bounds()
+    bbox = geom.Bounds3D()
     front = bnode["front"]
     back = bnode["back"]
     plane = o_planes.add(normal, dist)

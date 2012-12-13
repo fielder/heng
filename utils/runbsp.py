@@ -1,6 +1,6 @@
 import collections
 
-import line2d
+import geom
 import inmap
 
 #TODO: fix up t-junctions for 2-sided lines, where only one gets split
@@ -13,7 +13,7 @@ b_numon = 0
 b_numlines = 0
 
 
-class BLine(line2d.Line2D):
+class BLine(geom.Line2D):
     def __init__(self, linedef, is_backside=False):
         self.linedef = linedef
 
@@ -96,7 +96,7 @@ def _recursiveBSP(lines):
 
     # find a good partitioning plane
     cp = _chooseNodeLine(choiceparams)
-    nodeline = line2d.Line2D(lines[cp.index].verts[0], lines[cp.index].verts[1])
+    nodeline = geom.Line2D(lines[cp.index].verts[0], lines[cp.index].verts[1])
 
     frontlines, backlines, onlines = nodeline.splitLines(lines)
     b_numsplits += len(frontlines) + len(backlines) + len(onlines) - len(lines)
