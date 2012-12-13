@@ -134,31 +134,12 @@ class Line2D(object):
         return (front, back, cross, on)
 
 
-class ChopSurface2D(object):
+class _Bounds(object):
+    NUM_COMPONENTS = 1
+
     def __init__(self):
-        # in CCW order
-        self.verts = []
-
-        # one node reference for each chopsurf side
-        self.nodes = []
-
-    def setup(self, mins, maxs):
-        a = 32.0
-        v1 = (mins[0] - a, mins[1] - a)
-        v2 = (mins[0] - a, maxs[1] + a)
-        v3 = (maxs[0] + a, maxs[1] + a)
-        v4 = (maxs[0] + a, mins[1] - a)
-        self.verts = [v1, v2, v3, v4]
-
-    def chop(self, line2d):
-        #TODO: ...
-        pass
-
-
-class Bounds3D(object):
-    def __init__(self):
-        self.mins = [999999.0, 999999.0, 999999.0]
-        self.maxs = [-999999.0, -999999.0, -999999.0]
+        self.mins = [999999.0] * self.NUM_COMPONENTS
+        self.maxs = [-999999.0] * self.NUM_COMPONENTS
 
     def __repr__(self):
         return repr((self.mins, self.maxs))
@@ -167,9 +148,9 @@ class Bounds3D(object):
         return (self.mins, self.maxs)[i]
 
     def update(self, other):
-        if isinstance(other, Bounds3D):
+        if isinstance(other, _Bounds):
             # other bounds
-            for i in xrange(3):
+            for i in xrange(self.NUM_COMPONENTS):
                 self.mins[i] = min(self.mins[i], other.mins[i])
                 self.maxs[i] = max(self.maxs[i], other.maxs[i])
             return
@@ -181,7 +162,53 @@ class Bounds3D(object):
             # list/tuple of points
             points = other
 
-        for i in xrange(3):
+        for i in xrange(self.NUM_COMPONENTS):
             vals = [p[i] for p in points]
             self.mins[i] = float(min(self.mins[i], min(vals)))
             self.maxs[i] = float(max(self.maxs[i], max(vals)))
+
+
+class Bounds2D(_Bounds):
+    NUM_COMPONENTS = 2
+
+    def toPoints(self):
+        """
+        In CCW order.
+        """
+
+        return [ (self.mins[0], self.mins[1]),
+                 (self.mins[0], self.maxs[1]),
+                 (self.maxs[0], self.maxs[1]),
+                 (self.maxs[0], self.mins[1]) ]
+
+
+class Bounds3D(_Bounds):
+    NUM_COMPONENTS = 3
+
+
+class ChopSurface2D(object):
+    def __init__(self):
+        # vertices, in CCW order
+        self.verts = []
+
+        # one node reference for each chopsurf side
+        self.nodes = []
+
+    def setup(self, verts):
+        self.verts = list(verts)
+        self.nodes = [None] * len(self.verts)
+
+    def chopWithLine(self, line):
+#       dots = [dot2d(line.normal, v) - line.dist for v in self.verts]
+#       dots.append(dots[-1])
+
+        front = ChopSurface2D()
+        back = ChopSurface2D()
+
+#       for d1, d2, node in zip(dots, dots[1:], self.nodes):
+#           pass
+
+        #TODO: ...
+        #TODO: ...
+
+        return front, back

@@ -73,7 +73,7 @@ def _chooseNodeLine(choiceparams):
     raise Exception("no node chosen")
 
 
-def _recursiveBSP(lines):
+def _recursiveBSP(lines, chopsurf):
     global b_numsplits
     global b_numon
     global b_numlines
@@ -98,6 +98,7 @@ def _recursiveBSP(lines):
     cp = _chooseNodeLine(choiceparams)
     nodeline = geom.Line2D(lines[cp.index].verts[0], lines[cp.index].verts[1])
 
+    # split lines
     frontlines, backlines, onlines = nodeline.splitLines(lines)
     b_numsplits += len(frontlines) + len(backlines) + len(onlines) - len(lines)
     b_numon += len(onlines)
@@ -108,12 +109,15 @@ def _recursiveBSP(lines):
     if not backlines:
         raise Exception("node chosen with no back space")
 
+    # chop the chopsurf
+    frontchop, backchop = chopsurf.chopWithLine(nodeline)
+
     idx = len(b_nodes)
     b_nodes.append({})
     b_nodes[idx]["line"] = nodeline
     b_nodes[idx]["on"] = onlines
-    b_nodes[idx]["front"] = _recursiveBSP(frontlines)
-    b_nodes[idx]["back"] = _recursiveBSP(backlines)
+    b_nodes[idx]["front"] = _recursiveBSP(frontlines, frontchop)
+    b_nodes[idx]["back"] = _recursiveBSP(backlines, backchop)
 
     return idx
 
@@ -151,12 +155,19 @@ def runBSP():
 
     print ""
 
+    b = geom.Bounds2D()
+    b.update(inmap.vertexes)
+    b.update((b.mins[0] - 32.0, b.mins[1] - 32.0))
+    b.update((b.maxs[0] + 32.0, b.maxs[1] + 32.0))
+    chopsurf = geom.ChopSurface2D()
+    chopsurf.setup(b.toPoints())
+
     blines = _createBLines()
     print "%d blines" % len(blines)
     print ""
 
     print "Generating BSP tree..."
-    _recursiveBSP(blines)
+    _recursiveBSP(blines, chopsurf)
 
     print "%d nodes" % len(b_nodes)
     print "%d leafs" % len(b_leafs)

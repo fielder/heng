@@ -17,5 +17,5 @@ if __name__ == "__main__":
         inmap.load(w, mapname)
 
         runbsp.runBSP()
-        buildmap.buildMap()
+#       buildmap.buildMap()
 #       writebsp.writeFile(mapname, "%s.wad" % mapname)
