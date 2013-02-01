@@ -197,52 +197,190 @@ class Bounds3D(_Bounds):
 
 
 class ChopSurface2D(object):
-    def __init__(self):
+    def __init__(self, verts=None):
         # vertices, in CCW order
-        self.verts = []
+        if verts is not None:
+            self.verts = copy.copy(verts)
+        else:
+            self.verts = []
 
-        # one node reference for each chopsurf side
-        self.nodes = []
+        # References to lines that cut chopsurf edges; one reference
+        # per vertex.
+        # A ref will be None if no line cut and created that edge, but
+        # was part of the original vertices.
+        # Keyed by vertex tuple. The vertex indicates the starting
+        # vertex of the cut edge.
+        self.cutters = {v: None for v in self.verts}
 
-    def setup(self, verts):
-        self.verts = verts[:]
-        self.nodes = [None] * len(self.verts)
 
-    def chopWithLine(self, line):
-        verts = self.verts[:]
-        verts.append(verts[0]) # wrap-around case for easier looping
-        dists = [(dot2d(line.normal, v) - line.dist) for v in verts]
-        sides = [classifyDist(d) for d in dists]
+def chopSurf(chopsurf, line):
+#   chops = { SIDE_FRONT: ChopSurface2D(), SIDE_BACK: ChopSurface2D() }
 
-        front_chop = ChopSurface2D()
-        back_chop = ChopSurface2D()
+    verts = copy.copy(chopsurf.verts)
+    verts.append(verts[0]) # wrap-around case for easier looping
+    dists = [dot2d(line.normal, v) - line.dist for v in verts]
+    sides = [classifyDist(d) for d in dists]
 
-        for idx in xrange(len(self.verts)):
-            node = self.nodes[idx]
-            v1, v2 = verts[idx:idx + 2]
-            d1, d2 = dists[idx:idx + 2]
-            s1, s2 = sides[idx:idx + 2]
+    num_front = sides.count(SIDE_FRONT)
+    num_back = sides.count(SIDE_BACK)
+    num_cross = sides.count(SIDE_CROSS)
+    num_on = sides.count(SIDE_ON)
 
-            if s1 in (SIDE_ON, SIDE_FRONT):
-                front_chop.verts.append(v1)
-                front_chop.nodes.append(node)
+    front_verts = []
+    front_dists = []
+    front_sides = []
+    front_cutters = {}
 
-            if s1 in (SIDE_ON, SIDE_BACK):
-                back_chop.verts.append(v1)
-                back_chop.nodes.append(node)
+    back_verts = []
+    back_dists = []
+    back_sides = []
+    back_cutters = {}
 
-#### ???
-            if (s1, s2) == (SIDE_FRONT, SIDE_BACK):
-                #...
-                pass
-            elif (s1, s2) == (SIDE_BACK, SIDE_FRONT):
-                mid = lineFrac2D(v1, v2, d1 / (d1 - d2))
+    for idx in xrange(len(chopsurf.verts)):
+        v1, v2 = verts[idx:idx + 2]
+        d1, d2 = dists[idx:idx + 2]
+        s1, s2 = sides[idx:idx + 2]
+        cutter = chopsurf.cutters(v1)
 
-                back_chop.verts.append(mid)
-                back_chop.nodes.append(line)
+        if s1 == SIDE_ON:
+            front_verts.append(v1)
+            front_dists.append(d1)
+            front_sides.append(s1)
+            front_cutters[v1] = cutter
 
-                front_chop.verts.append(mid)
-                front_chop.nodes.append(node)
-#### ???
+            back_verts.append(v1)
+            back_dists.append(d1)
+            back_sides.append(s1)
+            back_cutters[v1] = cutter
+        #...
 
-        return front_chop, back_chop
+    #...
+
+#   for side in (SIDE_FRONT, SIDE_BACK):
+#       if len(chops[side].verts) < 3:
+#           chops[side] = None
+
+#   return (chops[SIDE_FRONT], chops[SIDE_BACK])
+
+
+################################
+################################
+#       chops = { SIDE_FRONT: ChopSurface2D(), SIDE_BACK, ChopSurface2D() }
+
+#       for idx in xrange(len(self.verts)):
+#           v1, v2 = verts[idx:idx + 2]
+#           d1, d2 = dists[idx:idx + 2]
+#           s1, s2 = sides[idx:idx + 2]
+
+#           if (s1, s2) == (SIDE_ON, SIDE_ON):
+#               # the line colinear with an edge will set that edge's
+#               # cutter to the line
+#               cutter = 0
+#           else:
+#               cutter = self.cutters[idx]
+
+#           if s1 == SIDE_ON:
+#               chops[SIDE_FRONT].verts.append(v1)
+#               chops[SIDE_FRONT].cutters.append(cutter)
+
+#               chops[SIDE_BACK].verts.append(v1)
+#               chops[SIDE_BACK].cutters.append(cutter)
+#           else:
+#               chops[s1].verts.append(v1)
+#               chops[s1].cutters.append(cutter)
+
+#           if (s1, s2) in ((SIDE_BACK, SIDE_FRONT), (SIDE_FRONT, SIDE_BACK)):
+#               mid = lineFrac2D(v1, v2, d1 / (d1 - d2))
+
+#               chops[SIDE_FRONT].verts.append(mid)
+#               chops[SIDE_FRONT].cutters.append(cutter)
+
+#               chops[SIDE_BACK].verts.append(mid)
+#               chops[SIDE_BACK].cutters.append(cutter)
+
+#       for idx, c in enumerate(chops[SIDE_FRONT].cutters):
+#           if c == 0:
+#               chops[SIDE_FRONT].cutters[idx] = line
+
+#       for idx, c in enumerate(chops[SIDE_BACK].cutters):
+#           if c == 0:
+#               chops[SIDE_BACK].cutters[idx] = line
+
+#       if len(chops[SIDE_FRONT]) < 3:
+#           chops[SIDE_FRONT] = None
+#       if len(chops[SIDE_BACK]) < 3:
+#           chops[SIDE_BACK] = None
+
+#       return (chops[SIDE_FRONT], chops[SIDE_BACK])
+################################
+
+#   def chopWithLine2(self, line):
+#       verts = self.verts[:]
+#       verts.append(verts[0]) # wrap-around case for easier looping
+#       dists = [dot2d(line.normal, v) - line.dist for v in verts]
+#       sides = [classifyDist(d) for d in dists]
+
+#       if sides.count(SIDE_ON) > 2:
+#           raise Exception("chopsurf with 3+ on points")
+
+#       chops = { SIDE_FRONT: ChopSurface2D(), SIDE_BACK, ChopSurface2D() }
+
+#       for idx in xrange(len(self.verts)):
+#           v1, v2 = verts[idx:idx + 2]
+#           d1, d2 = dists[idx:idx + 2]
+#           s1, s2 = sides[idx:idx + 2]
+
+#           if (s1, s2) == (SIDE_ON, SIDE_ON):
+#               # the line colinear with an edge will set that edge's
+#               # cutter to the line
+#               cutter = 0
+#           else:
+#               cutter = self.cutters[idx]
+
+#           if s1 == SIDE_ON:
+#               chops[SIDE_FRONT].verts.append(v1)
+#               chops[SIDE_FRONT].cutters.append(cutter)
+
+#               chops[SIDE_BACK].verts.append(v1)
+#               chops[SIDE_BACK].cutters.append(cutter)
+#           else:
+#               chops[s1].verts.append(v1)
+#               chops[s1].cutters.append(cutter)
+
+#           if (s1, s2) in ((SIDE_BACK, SIDE_FRONT), (SIDE_FRONT, SIDE_BACK)):
+#               mid = lineFrac2D(v1, v2, d1 / (d1 - d2))
+
+#               chops[SIDE_FRONT].verts.append(mid)
+#               chops[SIDE_FRONT].cutters.append(cutter)
+
+#               chops[SIDE_BACK].verts.append(mid)
+#               chops[SIDE_BACK].cutters.append(cutter)
+
+#       for idx, c in enumerate(chops[SIDE_FRONT].cutters):
+#           if c == 0:
+#               chops[SIDE_FRONT].cutters[idx] = line
+
+#       for idx, c in enumerate(chops[SIDE_BACK].cutters):
+#           if c == 0:
+#               chops[SIDE_BACK].cutters[idx] = line
+
+#       if len(chops[SIDE_FRONT]) < 3:
+#           chops[SIDE_FRONT] = None
+#       if len(chops[SIDE_BACK]) < 3:
+#           chops[SIDE_BACK] = None
+
+#       return (chops[SIDE_FRONT], chops[SIDE_BACK])
+
+################################
+
+#   for verts:
+#       if v is on and vnext is on, node = -1
+#       eles, node = input node
+
+#       find side the new vertex/node will go (both sides if v is on the line)
+
+#       add v & node to correct side (or both)
+
+#       if v/vnext crosses, add midpoint to both sides w/ node of -1
+
+#           if (s1, s2) in ((SIDE_FRONT, SIDE_BACK), (SIDE_BACK, SIDE_FRONT)):

@@ -87,6 +87,7 @@ def _recursiveBSP(lines, chopsurf):
             choiceparams.append(cp)
 
     if not choiceparams:
+#TODO: chop the surf w/ the remaining leaf lines & save off as the floor/ceiling polygon
         b_numlines += len(lines)
 
         # no line splits the space into 2 parts; must be a leaf
@@ -110,7 +111,7 @@ def _recursiveBSP(lines, chopsurf):
         raise Exception("node chosen with no back space")
 
     # chop the chopsurf
-    front_chop, back_chop = chopsurf.chopWithLine(nodeline)
+    front_chop, back_chop = geom.chopSurf(chopsurf, nodeline)
 
     idx = len(b_nodes)
     b_nodes.append({})
@@ -159,8 +160,7 @@ def runBSP():
     b.update(inmap.vertexes)
     b.update((b.mins[0] - 32.0, b.mins[1] - 32.0))
     b.update((b.maxs[0] + 32.0, b.maxs[1] + 32.0))
-    chopsurf = geom.ChopSurface2D()
-    chopsurf.setup(b.toPoints())
+    chopsurf = geom.ChopSurface2D(b.toPoints())
 
     blines = _createBLines()
     print "%d blines" % len(blines)
