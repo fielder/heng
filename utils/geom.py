@@ -197,6 +197,12 @@ class Bounds3D(_Bounds):
 
 
 class ChopSurface2D(object):
+    """
+    A 2D convex polygon. Each edge can have a line tagged to it telling
+    what line "cut" the polygon and generated that edge. In effect, the
+    cutter is a line touching up against the polygon.
+    """
+
     def __init__(self, verts=None):
         # vertices, in CCW order
         if verts is not None:
@@ -212,13 +218,23 @@ class ChopSurface2D(object):
         # vertex of the cut edge.
         self.cutters = {v: None for v in self.verts}
 
+    def isLastIndex(self, idx):
+        return (idx == len(self.verts) - 1)
+
+    def updateCutters(self, line, sides):
+        for idx, v in enumerate(self.verts):
+            if self.isLastIndex(idx):
+                s1, s2 = sides[idx], sides[0]
+            else:
+                s1, s2 = sides[idx], sides[idx + 1]
+
+            if (s1, s2) == (SIDE_ON, SIDE_ON):
+                self.cutters[v] = line
+
 
 def chopSurf(chopsurf, line):
-#   chops = { SIDE_FRONT: ChopSurface2D(), SIDE_BACK: ChopSurface2D() }
-
-    verts = copy.copy(chopsurf.verts)
-    verts.append(verts[0]) # wrap-around case for easier looping
-    dists = [dot2d(line.normal, v) - line.dist for v in verts]
+    num = len(chopsurf.verts)
+    dists = [dot2d(line.normal, v) - line.dist for v in chopsurf.verts]
     sides = [classifyDist(d) for d in dists]
 
     num_front = sides.count(SIDE_FRONT)
@@ -226,41 +242,87 @@ def chopSurf(chopsurf, line):
     num_cross = sides.count(SIDE_CROSS)
     num_on = sides.count(SIDE_ON)
 
-    front_verts = []
-    front_dists = []
+    if num_front in (num, num - 1):
+        # All vertices on front side, or just one touching
+        return (copy.copy(chopsurf), None) # FIXME: deep copy?
+    if num_back in (num, num - 1):
+        # All vertices on back side, or just one touching
+        return (None, copy.copy(chopsurf)) # FIXME: deep copy?
+
+    if num_on > 1 and num_back == 0:
+        # Touches up against the line, but lies on the front side.
+        # Nothing is cut, but the abutting line will be set as that
+        # side's cutter.
+        cs = copy.copy(chopsurf) # FIXME: deep copy?
+        cs.updateCutters(line, sides)
+        return (cs, None)
+    elif num_on > 1 and num_front == 0:
+        # Touches up against the line, but lies on the back side.
+        # Nothing is cut, but the abutting line will be set as that
+        # side's cutter.
+        cs = copy.copy(chopsurf) # FIXME: deep copy?
+        cs.updateCutters(line, sides)
+        return (None, cs)
+
+    # remaining case: the surface must be split
+
+    front_chop = ChopSurface2D()
     front_sides = []
-    front_cutters = {}
 
-    back_verts = []
-    back_dists = []
+    back_chop = ChopSurface2D()
     back_sides = []
-    back_cutters = {}
 
-    for idx in xrange(len(chopsurf.verts)):
-        v1, v2 = verts[idx:idx + 2]
-        d1, d2 = dists[idx:idx + 2]
-        s1, s2 = sides[idx:idx + 2]
-        cutter = chopsurf.cutters(v1)
+    for idx in xrange(num):
+        if chopsurf.isLastIndex(idx):
+            v1, v2 = chopsurf.verts[idx], chopsurf.verts[0]
+            d1, d2 = dists[idx], dists[0]
+            s1, s2 = sides[idx], sides[0]
+        else:
+            v1, v2 = chopsurf.verts[idx], chopsurf.verts[idx + 1]
+            d1, d2 = dists[idx], dists[idx + 1]
+            s1, s2 = sides[idx], sides[idx + 1]
+        cutter = chopsurf.cutters[v1]
 
-        if s1 == SIDE_ON:
-            front_verts.append(v1)
-            front_dists.append(d1)
+        if s1 == SIDE_FRONT:
+            front_chop.verts.append(v1)
+            front_chop.cutters[v1] = cutter
             front_sides.append(s1)
-            front_cutters[v1] = cutter
-
-            back_verts.append(v1)
-            back_dists.append(d1)
+        elif s1 == SIDE_BACK:
+            back_chop.verts.append(v1)
+            back_chop.cutters[v1] = cutter
             back_sides.append(s1)
-            back_cutters[v1] = cutter
-        #...
+        elif s1 == SIDE_ON:
+            front_chop.verts.append(v1)
+            front_chop.cutters[v1] = cutter
+            front_sides.append(s1)
 
-    #...
+            back_chop.verts.append(v1)
+            back_chop.cutters[v1] = cutter
+            back_sides.append(s1)
+        else:
+            raise Exception("shouldn't happen, %s" % str(s1))
 
-#   for side in (SIDE_FRONT, SIDE_BACK):
-#       if len(chops[side].verts) < 3:
-#           chops[side] = None
+        if (s1, s2) == (SIDE_BACK, SIDE_FRONT) or \
+           (s1, s2) == (SIDE_FRONT, SIDE_BACK):
+            mid = lineFrac2D(v1, v2, d1 / (d1 - d2))
 
-#   return (chops[SIDE_FRONT], chops[SIDE_BACK])
+            front_chop.verts.append(mid)
+            front_chop.cutters[mid] = None
+            front_sides.append(SIDE_ON)
+
+            back_chop.verts.append(mid)
+            back_chop.cutters[mid] = None
+            back_sides.append(SIDE_ON)
+
+    front_chop.updateCutters(line, front_sides)
+    back_chop.updateCutters(line, back_sides)
+
+    if len(front_chop.verts) < 3:
+        front_chop = None
+    if len(back_chop.verts) < 3:
+        back_chop = None
+
+    return (front_chop, back_chop)
 
 
 ################################
