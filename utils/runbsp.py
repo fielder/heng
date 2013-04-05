@@ -4,13 +4,16 @@ import geom
 import inmap
 
 #TODO: fix up t-junctions for 2-sided lines, where only one gets split
+#TODO: be sure to handle the case of 1 leaf and 0 nodes
+
+vertexes_inv = []
 
 # part of the BSP process
 b_nodes = []
 b_leafs = []
 b_numsplits = 0
 b_numon = 0
-b_numlines = 0
+b_numlinestot = 0
 
 
 class BLine(geom.Line2D):
@@ -21,8 +24,8 @@ class BLine(geom.Line2D):
         # 2nd sidenum sidedef
         self.is_backside = is_backside
 
-        v1 = (float(inmap.vertexes[linedef["v1"]][0]), float(inmap.vertexes[linedef["v1"]][1]))
-        v2 = (float(inmap.vertexes[linedef["v2"]][0]), float(inmap.vertexes[linedef["v2"]][1]))
+        v1 = (float(vertexes_inv[linedef["v1"]][0]), float(vertexes_inv[linedef["v1"]][1]))
+        v2 = (float(vertexes_inv[linedef["v2"]][0]), float(vertexes_inv[linedef["v2"]][1]))
 
         if self.is_backside:
             v1, v2 = v2, v1
@@ -76,24 +79,29 @@ def _chooseNodeLine(choiceparams):
 def _recursiveBSP(lines, chopsurf):
     global b_numsplits
     global b_numon
-    global b_numlines
+    global b_numlinestot
 
-    # find which lines can act as a partitioning node
     choiceparams = []
     for idx, l in enumerate(lines):
         front, back, cross, on = l.countSides(lines)
         if cross or (front and back):
-            cp = ChoiseParams(idx, l.isAxial(), front, back, on, cross, abs(front - back) / float(len(lines)))
-            choiceparams.append(cp)
+            choiceparams.append( ChoiseParams(idx, l.isAxial(),
+                                              front, back, on, cross,
+                                              abs(front - back) / float(len(lines))) )
 
+    # no line splits the space into 2 parts; must be a leaf
     if not choiceparams:
-#TODO: chop the surf w/ the remaining leaf lines & save off as the floor/ceiling polygon
-        b_numlines += len(lines)
+        # leaf lines are done processing, add to total line tally
+        b_numlinestot += len(lines)
 
-        # no line splits the space into 2 parts; must be a leaf
         idx = len(b_leafs)
         b_leafs.append(lines)
+
+#TODO: chop the surf w/ the remaining leaf lines & save off as the floor/ceiling polygon
+
         return idx | 0x80000000
+
+    # must be a splitting node
 
     # find a good partitioning plane
     cp = _chooseNodeLine(choiceparams)
@@ -101,9 +109,15 @@ def _recursiveBSP(lines, chopsurf):
 
     # split lines
     frontlines, backlines, onlines = nodeline.splitLines(lines)
+
+    # no. times a split occurred is, (lines after splitting) - (lines before splitting)
     b_numsplits += len(frontlines) + len(backlines) + len(onlines) - len(lines)
+    # how many lines are taken out of the bsp process because they lie
+    # on a node; this is generally good as it helps reduce splits
     b_numon += len(onlines)
-    b_numlines += len(onlines)
+    # as the on-lines are taken out of the process, they're done and
+    # won't be touched again
+    b_numlinestot += len(onlines)
 
     if not frontlines:
         raise Exception("node chosen with no front space")
@@ -111,7 +125,9 @@ def _recursiveBSP(lines, chopsurf):
         raise Exception("node chosen with no back space")
 
     # chop the chopsurf
-    front_chop, back_chop = geom.chopSurf(chopsurf, nodeline)
+#FIXME
+#   front_chop, back_chop = geom.chopSurf(chopsurf, nodeline)
+    front_chop, back_chop = None, None
 
     idx = len(b_nodes)
     b_nodes.append({})
@@ -128,12 +144,12 @@ def _createBLines():
 
     for l in inmap.linedefs:
         sidenum0, sidenum1 = l["sidenum"]
-
         if sidenum0 < 0 or sidenum0 >= len(inmap.sidedefs):
             raise Exception("bad front sidedef %d" % sidenum0)
+
         lines.append(BLine(l))
 
-        # create a line running in the opposite direction for 2-sided
+        # create a line running in the opposite direction for a 2-sided
         # linedef
         if sidenum1 != -1:
             lines.append(BLine(l, is_backside=True))
@@ -142,25 +158,29 @@ def _createBLines():
 
 
 def runBSP():
+    global vertexes_inv
     global b_nodes
     global b_leafs
     global b_numsplits
     global b_numon
-    global b_numlines
+    global b_numlinestot
 
     b_nodes = []
     b_leafs = []
     b_numsplits = 0
     b_numon = 0
-    b_numlines = 0
+    b_numlinestot = 0
 
     print ""
 
+    # negate each vertex y to match our coordinate system
+    vertexes_inv = [(x, -y) for x, y in inmap.vertexes]
+
     b = geom.Bounds2D()
-    b.update(inmap.vertexes)
+    b.update(vertexes_inv)
     b.update((b.mins[0] - 32.0, b.mins[1] - 32.0))
     b.update((b.maxs[0] + 32.0, b.maxs[1] + 32.0))
-    chopsurf = geom.ChopSurface2D(b.toPoints())
+    chopsurf = geom.ChopSurface2D(verts=b.toPoints())
 
     blines = _createBLines()
     print "%d blines" % len(blines)
@@ -172,5 +192,5 @@ def runBSP():
     print "%d nodes" % len(b_nodes)
     print "%d leafs" % len(b_leafs)
     print "%d splits" % b_numsplits
-    print "%d lines" % b_numlines
     print "%d lines on nodes" % b_numon
+    print "%d lines total" % b_numlinestot

@@ -47,14 +47,17 @@ class Line2D(object):
         dx, dy = self.delta()
         normal = (dy, -dx)
         len_ = math.hypot(*normal)
+
         self.normal = (normal[0] / len_, normal[1] / len_)
         self.dist = dot2d(self.verts[0], self.normal)
 
     def delta(self):
-        return (self.verts[1][0] - self.verts[0][0], self.verts[1][1] - self.verts[0][1])
+        return ( self.verts[1][0] - self.verts[0][0],
+                 self.verts[1][1] - self.verts[0][1] )
 
     def isAxial(self):
-        return math.fabs(self.normal[0]) == 1.0 or math.fabs(self.normal[1]) == 1.0
+        return math.fabs(self.normal[0]) == 1.0 or \
+               math.fabs(self.normal[1]) == 1.0
 
     def pointSide(self, p):
         return classifyDist(dot2d(self.normal, p) - self.dist)
@@ -130,7 +133,7 @@ class Line2D(object):
             if b:
                 back.append(b)
             if o:
-                on.append(b)
+                on.append(o)
         return (front, back, on)
 
     def countSides(self, lines):

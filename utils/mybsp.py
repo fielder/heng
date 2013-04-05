@@ -4,7 +4,7 @@ import sys
 
 import wad
 import inmap
-#import runbsp
+import runbsp
 #import buildmap
 #import writebsp
 
@@ -18,6 +18,6 @@ if __name__ == "__main__":
     for mapname in sys.argv[2:]:
         inmap.load(w, mapname)
 
-#       runbsp.runBSP()
+        runbsp.runBSP()
 #       buildmap.buildMap()
 #       writebsp.writeFile(mapname, "%s.wad" % mapname)
