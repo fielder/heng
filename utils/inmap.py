@@ -4,6 +4,8 @@ vertexes = []
 linedefs = []
 sidedefs = []
 sectors = []
+nodes = []
+ssectors = []
 
 
 def load(w, mapname):
@@ -11,22 +13,24 @@ def load(w, mapname):
     global linedefs
     global sidedefs
     global sectors
+    global nodes
+    global ssectors
 
     start = w.lump_name_to_num[mapname]
 
-    # negate each vertex y to match our coordinate system
-    vertexes = [(x, -y) for x, y in _parseVERTEXES(w.readLumpFromOffset("VERTEXES", start))]
-
+    vertexes = _parseVERTEXES(w.readLumpFromOffset("VERTEXES", start))
     linedefs = _parseLINEDEFS(w.readLumpFromOffset("LINEDEFS", start))
     sidedefs = _parseSIDEDEFS(w.readLumpFromOffset("SIDEDEFS", start))
     sectors = _parseSECTORS(w.readLumpFromOffset("SECTORS", start))
+    nodes = _parseNODES(w.readLumpFromOffset("NODES", start))
+    ssectors = _parseSSECTORS(w.readLumpFromOffset("SSECTORS", start))
 
     print "%d VERTEXES" % len(vertexes)
     print "%d LINEDEFS" % len(linedefs)
     print "%d SIDEDEFS" % len(sidedefs)
     print "%d SECTORS" % len(sectors)
-    print "%d NODES" % (len(w.readLumpFromOffset("NODES", start)) / 28)
-    print "%d SSECTORS" % (len(w.readLumpFromOffset("SSECTORS", start)) / 4)
+    print "%d NODES" % len(nodes)
+    print "%d SSECTORS" % len(ssectors)
 
     print "Loaded %s" % mapname
 
@@ -36,9 +40,7 @@ def _pythonifyString(s):
     Get rid of c-style string terminators.
     """
 
-    if "\x00" in s:
-        s = s[:s.index("\x00")]
-    return s
+    return s.rstrip("\x00")
 
 
 def _parseLINEDEFS(raw):
@@ -110,6 +112,47 @@ def _parseSECTORS(raw):
         s["lightlevel"] = light
         s["special"] = special
         s["tag"] = tag
+
+        ret.append(s)
+
+    return ret
+
+
+def _parseNODES(raw):
+    ret = []
+
+    for idx in xrange(0, len(raw), 28):
+        nraw = raw[idx:idx + 28]
+
+        x, y, dx, dy, r_y_max, r_y_min, r_x_min, r_x_max, l_y_max, l_y_min, l_x_min, l_x_max, right, left = struct.unpack("<hhhhhhhhhhhhHH", nraw)
+
+        r_bbox = { "mins": (r_x_min, r_y_min), "maxs": (r_x_max, r_y_max) }
+        l_bbox = { "mins": (l_x_min, l_y_min), "maxs": (l_x_max, l_y_max) }
+
+        s = {}
+        s["x"] = x
+        s["y"] = y
+        s["dx"] = dx
+        s["dy"] = dy
+        s["bbox"] = (r_bbox, l_bbox)
+        s["children"] = (right, left)
+
+        ret.append(s)
+
+    return ret
+
+
+def _parseSSECTORS(raw):
+    ret = []
+
+    for idx in xrange(0, len(raw), 4):
+        sraw = raw[idx:idx + 4]
+
+        numsegs, firstseg = struct.unpack("<hh", sraw)
+
+        s = {}
+        s["numsegs"] = numsegs
+        s["firstseg"] = firstseg
 
         ret.append(s)
 
