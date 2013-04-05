@@ -16,14 +16,14 @@ def _pythonifyString(s):
     return s
 
 
-def _wadifyString(s, bufsize):
+def _wadifyString(s):
     """
     Pad a wad string out to a certain length, padding with empty bytes.
     Note the strings won't necessarily be terminated.
     """
 
-    if len(s) < bufsize:
-        s += "\x00" * (bufsize - len(s))
+    if len(s) < 8:
+        s += "\x00" * (8 - len(s))
     return s
 
 
@@ -35,8 +35,8 @@ def writeWad(path, lumps):
 
     fp = open(path, "wb")
 
-    # dummy header
-    fp.write("\x00" * 12) # will get overwritten later
+    # dummy header, will get overwritten later
+    fp.write("\x00" * 12)
 
     # lump data
     offs = []
@@ -49,7 +49,7 @@ def writeWad(path, lumps):
     for offset, (lumpname, lumpdata) in zip(offs, lumps):
         fp.write(struct.pack("<i", offset))
         fp.write(struct.pack("<i", len(lumpdata)))
-        fp.write(_wadifyString(lumpname, 8))
+        fp.write(_wadifyString(lumpname))
 
     # header
     fp.seek(0)
@@ -137,9 +137,20 @@ class Wad(object):
 if __name__ == "__main__":
     import sys
 
-    for path in sys.argv[1:]:
-        w = Wad(path)
+    if len(sys.argv) == 2:
+        w = Wad(sys.argv[1])
         print "offset size name"
         for l in w.lumps:
             print l.filepos, l.size, l.name
         print "%d lumps" % len(w.lumps)
+    elif len(sys.argv) > 2:
+        w = Wad(sys.argv[1])
+        for lumpname in sys.argv[2:]:
+            lumpname = lumpname.upper()
+            dat = w.readLump(lumpname)
+            fp = open(lumpname, "wb")
+            fp.write(dat)
+            fp.close()
+            print "wrote %d bytes to \"%s\"" % (len(dat), lumpname)
+    else:
+        pass
