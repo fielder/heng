@@ -11,7 +11,7 @@ import runbsp
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
-        print "usage: %s <iwad> <mapname>" % sys.argv[0]
+        print "usage: %s <wad> <mapname>" % sys.argv[0]
         sys.exit(0)
     w = wad.Wad(sys.argv[1])
 

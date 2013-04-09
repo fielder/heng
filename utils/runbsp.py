@@ -125,14 +125,13 @@ def _recursiveBSP(lines, chopsurf):
         raise Exception("node chosen with no back space")
 
     # chop the chopsurf
-#FIXME
-#   front_chop, back_chop = geom.chopSurf(chopsurf, nodeline)
-    front_chop, back_chop = None, None
+    front_chop, back_chop = geom.chopSurf(chopsurf, nodeline)
+#   front_chop, back_chop = None, None
 
     idx = len(b_nodes)
     b_nodes.append({})
-    b_nodes[idx]["line"] = nodeline
-    b_nodes[idx]["on"] = onlines
+    b_nodes[idx]["cutter"] = nodeline
+    b_nodes[idx]["on_lines"] = onlines
     b_nodes[idx]["front"] = _recursiveBSP(frontlines, front_chop)
     b_nodes[idx]["back"] = _recursiveBSP(backlines, back_chop)
 
