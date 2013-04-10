@@ -1,3 +1,4 @@
+import copy
 import collections
 
 import geom
@@ -5,8 +6,6 @@ import inmap
 
 #TODO: fix up t-junctions for 2-sided lines, where only one gets split
 #TODO: be sure to handle the case of 1 leaf and 0 nodes
-
-vertexes_inv = []
 
 # part of the BSP process
 b_nodes = []
@@ -17,20 +16,13 @@ b_numlinestot = 0
 
 
 class BLine(geom.Line2D):
-    def __init__(self, linedef, is_backside=False):
-        self.linedef = linedef
-
-        # note that if we're on the back side we're using the linedef's
-        # 2nd sidenum sidedef
-        self.is_backside = is_backside
-
-        v1 = (float(vertexes_inv[linedef["v1"]][0]), float(vertexes_inv[linedef["v1"]][1]))
-        v2 = (float(vertexes_inv[linedef["v2"]][0]), float(vertexes_inv[linedef["v2"]][1]))
-
-        if self.is_backside:
-            v1, v2 = v2, v1
-
+    def __init__(self, v1, v2, flags, special, tag, sidedef):
         super(BLine, self).__init__(v1, v2)
+
+        self.flags = flags
+        self.special = special
+        self.tag = tag
+        self.sidedef = sidedef
 
 
 ChoiseParams = collections.namedtuple("ChoiseParams", ["index", "axial", "front", "back", "on", "cross", "imbalance"])
@@ -125,8 +117,8 @@ def _recursiveBSP(lines, chopsurf):
         raise Exception("node chosen with no back space")
 
     # chop the chopsurf
-    front_chop, back_chop = geom.chopSurf(chopsurf, nodeline)
-#   front_chop, back_chop = None, None
+#   front_chop, back_chop = geom.chopSurf(chopsurf, nodeline)
+    front_chop, back_chop = None, None
 
     idx = len(b_nodes)
     b_nodes.append({})
@@ -138,26 +130,7 @@ def _recursiveBSP(lines, chopsurf):
     return idx
 
 
-def _createBLines():
-    lines = []
-
-    for l in inmap.linedefs:
-        sidenum0, sidenum1 = l["sidenum"]
-        if sidenum0 < 0 or sidenum0 >= len(inmap.sidedefs):
-            raise Exception("bad front sidedef %d" % sidenum0)
-
-        lines.append(BLine(l))
-
-        # create a line running in the opposite direction for a 2-sided
-        # linedef
-        if sidenum1 != -1:
-            lines.append(BLine(l, is_backside=True))
-
-    return lines
-
-
 def runBSP():
-    global vertexes_inv
     global b_nodes
     global b_leafs
     global b_numsplits
@@ -172,16 +145,40 @@ def runBSP():
 
     print ""
 
-    # negate each vertex y to match our coordinate system
-    vertexes_inv = [(x, -y) for x, y in inmap.vertexes]
-
     b = geom.Bounds2D()
-    b.update(vertexes_inv)
+
+    # create input lines
+    blines = []
+    for ldef in inmap.linedefs:
+        in_v1 = inmap.vertexes[ldef["v1"]]
+        in_v2 = inmap.vertexes[ldef["v2"]]
+
+        in_sidenum_front = ldef["sidenum"][0]
+        in_sidenum_back = ldef["sidenum"][1]
+
+        in_flags = ldef["flags"]
+        in_special = ldef["special"]
+        in_tag = ldef["tag"]
+
+        # negate each vertex y to match our coordinate system
+        v1 = (float(in_v1[0]), -float(in_v1[1]))
+        v2 = (float(in_v2[0]), -float(in_v2[1]))
+
+        b.update(v1)
+        b.update(v2)
+
+        # since we negate y coords, the line will run in the opposite
+        # direction
+        blines.append(BLine(v2, v1, in_flags, in_special, in_tag, inmap.sidedefs[in_sidenum_front]))
+
+        if in_sidenum_back != -1:
+            # this is a 2-sided line
+            blines.append(BLine(v1, v2, in_flags, in_special, in_tag, inmap.sidedefs[in_sidenum_back]))
+
     b.update((b.mins[0] - 32.0, b.mins[1] - 32.0))
     b.update((b.maxs[0] + 32.0, b.maxs[1] + 32.0))
     chopsurf = geom.ChopSurface2D(verts=b.toPoints())
 
-    blines = _createBLines()
     print "%d blines" % len(blines)
     print ""
 
