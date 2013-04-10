@@ -117,8 +117,7 @@ def _recursiveBSP(lines, chopsurf):
         raise Exception("node chosen with no back space")
 
     # chop the chopsurf
-#   front_chop, back_chop = geom.chopSurf(chopsurf, nodeline)
-    front_chop, back_chop = None, None
+    front_chop, back_chop = geom.chopSurf(chopsurf, nodeline)
 
     idx = len(b_nodes)
     b_nodes.append({})
@@ -153,7 +152,8 @@ def runBSP():
         in_v1 = inmap.vertexes[ldef["v1"]]
         in_v2 = inmap.vertexes[ldef["v2"]]
 
-        in_sidenum_front = ldef["sidenum"][0]
+        in_sidedef_front = inmap.sidedefs[ldef["sidenum"][0]]
+
         in_sidenum_back = ldef["sidenum"][1]
 
         in_flags = ldef["flags"]
@@ -169,11 +169,12 @@ def runBSP():
 
         # since we negate y coords, the line will run in the opposite
         # direction
-        blines.append(BLine(v2, v1, in_flags, in_special, in_tag, inmap.sidedefs[in_sidenum_front]))
+        blines.append(BLine(v2, v1, in_flags, in_special, in_tag, in_sidedef_front))
 
         if in_sidenum_back != -1:
             # this is a 2-sided line
-            blines.append(BLine(v1, v2, in_flags, in_special, in_tag, inmap.sidedefs[in_sidenum_back]))
+            in_sidedef_back = inmap.sidedefs[in_sidenum_back]
+            blines.append(BLine(v1, v2, in_flags, in_special, in_tag, in_sidedef_back))
 
     b.update((b.mins[0] - 32.0, b.mins[1] - 32.0))
     b.update((b.maxs[0] + 32.0, b.maxs[1] + 32.0))
