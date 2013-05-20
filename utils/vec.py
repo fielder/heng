@@ -15,6 +15,9 @@ PITCH = 0
 YAW   = 1
 ROLL  = 2
 
+Plane = collections.namedtuple("Plane", ["normal", "dist"])
+
+
 def _isScalar(x):
     return isinstance(x, float) or \
            isinstance(x, int) or \
@@ -66,8 +69,6 @@ def brushFromPlanes(planes):
         out.append(p)
 
     return out
-
-Plane = collections.namedtuple("Plane", ["normal", "dist"])
 
 
 class Vec3(object):
@@ -354,7 +355,7 @@ class Poly(object):
         return Poly(verts)
 
     @classmethod
-    def newFromPlane(cls, plane.normal, plane.dist):
+    def newFromPlane(cls, plane):
         # First, find the up vector on the plane.
         # It is perpindicular to the normal, and points up if looking
         # directly down the normal.
