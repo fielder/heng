@@ -1,5 +1,6 @@
 import re
 import math
+import string
 import operator
 import collections
 
@@ -50,6 +51,21 @@ def classifyDist(d):
 def lineFrac(a, b, frac):
     return a + (b - a) * frac
 
+def brushFromPlanes(planes):
+    polys = [Poly.newFromPlane(pl.normal, pl.dist) for pl in planes]
+
+    out = []
+    for idx, p in enumerate(polys):
+        for plidx, pl in enumerate(planes):
+            if idx == plidx:
+                # don't clip self
+                continue
+            front, p = p.splitWithPlane(pl.normal, pl.dist)
+            if not p:
+                raise Exception("fully clipped a face")
+        out.append(p)
+
+    return out
 
 Plane = collections.namedtuple("Plane", ["normal", "dist"])
 
@@ -206,7 +222,7 @@ class Poly(object):
         self._need_recalc = False
 
     def __str__(self):
-        return " ".join([str(v) for v in self._verts])
+        return "{ " + " ".join([str(v) for v in self._verts]) + " }"
 
     def __iter__(self):
         for v in self._verts:
@@ -234,8 +250,8 @@ class Poly(object):
         self._recalc()
         return self._axial
 
-    def splitWithPlane(self, pnormal, pdist):
-        dists = [pnormal.dot(v) - pdist for v in self._verts]
+    def splitWithPlane(self, plane):
+        dists = [plane.normal.dot(v) - plane.dist for v in self._verts]
         sides = [classifyDist(d) for d in dists]
 
         num_on = sides.count(SIDE_ON)
@@ -286,24 +302,70 @@ class Poly(object):
 
     @classmethod
     def newFromString(cls, s):
-        # { ( x y z ) ( x y z ) ... }
-        #...
-        #...
-        pass
+        # { ( x1 y1 z1 ) ( x2 y2 z2 ) ... }
+
+        def _skipWhites(str_, idx):
+            while idx < len(str_) and str_[idx] in string.whitespace:
+                idx += 1
+            return idx
+        def _skipNonWhites(str_, idx):
+            while idx < len(str_) and str_[idx] not in string.whitespace:
+                idx += 1
+            return idx
+
+        idx = _skipWhites(s, 0)
+
+        if s[idx] != "{":
+            raise ValueError("invalid poly format")
+        idx += 1
+
+        verts = []
+        while 1:
+            idx = _skipWhites(s, idx)
+            if s[idx] == "}":
+                break
+            elif s[idx] == "(":
+                idx += 1
+
+                idx = start = _skipWhites(s, idx)
+                idx = _skipNonWhites(s, idx)
+                x = float(s[start:idx])
+
+                idx = start = _skipWhites(s, idx)
+                idx = _skipNonWhites(s, idx)
+                y = float(s[start:idx])
+
+                idx = start = _skipWhites(s, idx)
+                idx = _skipNonWhites(s, idx)
+                z = float(s[start:idx])
+
+                idx = _skipWhites(s, idx)
+                if s[idx] != ")":
+                    raise ValueError("invalid vertex")
+                idx += 1
+
+                verts.append(Vec3(x, y, z))
+            else:
+                raise ValueError("invalid poly format")
+
+        if len(verts) < 3:
+            raise ValueError("too few vertices")
+
+        return Poly(verts)
 
     @classmethod
-    def newFromPlane(cls, pnormal, pdist):
+    def newFromPlane(cls, plane.normal, plane.dist):
         # First, find the up vector on the plane.
         # It is perpindicular to the normal, and points up if looking
         # directly down the normal.
         best = -99.0
         majoraxis = None
-        for idx, val in enumerate(pnormal):
+        for idx, val in enumerate(plane.normal):
             if math.fabs(val) > best:
-                best = val
+                best = math.fabs(val)
                 majoraxis = idx
         if majoraxis is None:
-            raise Exception("no major axis for normal \"%s\"" % str(pnormal))
+            raise Exception("no major axis for normal \"%s\"" % str(plane.normal))
 
         if majoraxis == 0:
             up = Vec3(0, 1, 0)
@@ -312,14 +374,14 @@ class Poly(object):
         else:
             up = Vec3(0, 1, 0)
         # Have an appropriate up vector, project it onto the plane.
-        dist = pnormal.dot(up)
-        up = (up - (pnormal * dist)).normalized
+        dist = plane.normal.dot(up)
+        up = (up - (plane.normal * dist)).normalized
 
-        origin = pnormal * pdist
+        origin = plane.normal * plane.dist
 
         # can cross the normal and up orthogonal vectors to get the
         # right vector
-        right = up.cross(pnormal)
+        right = up.cross(plane.normal)
 
         up *= 8192.0
         right *= 8192.0
