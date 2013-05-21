@@ -35,12 +35,6 @@ def _isXY(x):
 def _floatVals(vals):
     return tuple((float(v) for v in vals))
 
-def _prettyFloat(f):
-    iv = int(v)
-    if iv == v:
-        return str(iv)
-    return "%.56f" % v
-
 def classifyDist(d):
     if math.fabs(d) < SIDE_EPSILON:
         return SIDE_ON
@@ -54,8 +48,8 @@ def classifyDist(d):
 def lineFrac(a, b, frac):
     return a + (b - a) * frac
 
-def brushFromPlanes(planes):
-    polys = [Poly.newFromPlane(pl.normal, pl.dist) for pl in planes]
+def polyhedronFromPlanes(planes):
+    polys = [Poly3D.newFromPlane(pl) for pl in planes]
 
     out = []
     for idx, p in enumerate(polys):
@@ -63,12 +57,67 @@ def brushFromPlanes(planes):
             if idx == plidx:
                 # don't clip self
                 continue
-            front, p = p.splitWithPlane(pl.normal, pl.dist)
+            front, p = p.splitWithPlane(pl)
             if not p:
                 raise Exception("fully clipped a face")
         out.append(p)
 
     return out
+
+def splitPoly(verts, normal, dist):
+    """
+    Will work with either 2d or 3d polys cutting with a line or a
+    plane, respectively.
+    """
+
+    dists = [normal.dot(v) - dist for v in verts]
+    sides = [classifyDist(d) for d in dists]
+
+    num_on = sides.count(SIDE_ON)
+    num_back = sides.count(SIDE_BACK)
+    num_front = sides.count(SIDE_FRONT)
+
+    if num_on == len(verts):
+        return (None, None)
+    elif num_back == 0:
+        return (verts, None)
+    elif num_front == 0:
+        return (None, verts)
+
+    # crosses the cutter, split it
+
+    frontv = []
+    backv = []
+
+    for idx in xrange(len(verts)):
+        v = verts[idx]
+        dist = dists[idx]
+        side = sides[idx]
+
+        n_idx = (idx + 1) % len(verts)
+        n_v = verts[n_idx]
+        n_dist = dists[n_idx]
+        n_side = sides[n_idx]
+
+        if side == SIDE_ON:
+            frontv.append(v)
+            backv.append(v)
+        elif side == SIDE_FRONT:
+            frontv.append(v)
+            if n_side == SIDE_BACK:
+                mid = lineFrac(v, n_v, dist / (dist - n_dist))
+                frontv.append(mid)
+                backv.append(mid)
+        elif side == SIDE_BACK:
+            backv.append(v)
+            if n_side == SIDE_FRONT:
+                mid = lineFrac(v, n_v, dist / (dist - n_dist))
+                frontv.append(mid)
+                backv.append(mid)
+        else:
+            raise Exception("invalid side %s" % str(side))
+
+    return (frontv, backv)
 
 
 class Vec3(object):
@@ -191,7 +240,7 @@ Vec3.Y      = Vec3(0.0, 1.0, 0.0)
 Vec3.Z      = Vec3(0.0, 0.0, 1.0)
 
 
-class Poly(object):
+class Poly3D(object):
     """
     Vertices run in CCW order.
     """
@@ -200,7 +249,7 @@ class Poly(object):
         self._verts = []
 
         if other:
-            if isinstance(other, Poly):
+            if isinstance(other, Poly3D):
                 self._verts = other._verts[:]
             elif isinstance(other, list) or \
                  isinstance(other, tuple):
@@ -224,6 +273,9 @@ class Poly(object):
 
     def __str__(self):
         return "{ " + " ".join([str(v) for v in self._verts]) + " }"
+
+    def __len__(self):
+        return len(self._verts)
 
     def __iter__(self):
         for v in self._verts:
@@ -252,54 +304,17 @@ class Poly(object):
         return self._axial
 
     def splitWithPlane(self, plane):
-        dists = [plane.normal.dot(v) - plane.dist for v in self._verts]
-        sides = [classifyDist(d) for d in dists]
+        f_verts, b_verts = splitPoly(self._verts, plane.normal, plane.dist)
 
-        num_on = sides.count(SIDE_ON)
-        num_back = sides.count(SIDE_BACK)
-        num_front = sides.count(SIDE_FRONT)
+        front = None
+        back = None
 
-        if num_on == len(self._verts):
-            return (None, None)
-        elif num_back == 0:
-            return (Poly(self), None)
-        elif num_front == 0:
-            return (None, Poly(self))
+        if f_verts:
+            front = Poly3D(f_verts)
+        if b_verts:
+            back = Poly3D(b_verts)
 
-        # crosses the plane, split it
-
-        frontv = []
-        backv = []
-
-        for idx in xrange(len(self._verts)):
-            v = self._verts[idx]
-            dist = dists[idx]
-            side = sides[idx]
-
-            n_idx = (idx + 1) % len(self._verts)
-            n_v = self._verts[n_idx]
-            n_dist = dists[n_idx]
-            n_side = sides[n_idx]
-
-            if side == SIDE_ON:
-                frontv.append(v)
-                backv.append(v)
-            elif side == SIDE_FRONT:
-                frontv.append(v)
-                if n_side == SIDE_BACK:
-                    mid = lineFrac(v, n_v, dist / (dist - n_dist))
-                    frontv.append(mid)
-                    backv.append(mid)
-            elif side == SIDE_BACK:
-                backv.append(v)
-                if n_side == SIDE_FRONT:
-                    mid = lineFrac(v, n_v, dist / (dist - n_dist))
-                    frontv.append(mid)
-                    backv.append(mid)
-            else:
-                raise Exception("invalid side %s" % str(side))
-
-        return (Poly(frontv), Poly(backv))
+        return (front, back)
 
     @classmethod
     def newFromString(cls, s):
@@ -352,7 +367,7 @@ class Poly(object):
         if len(verts) < 3:
             raise ValueError("too few vertices")
 
-        return Poly(verts)
+        return cls(verts)
 
     @classmethod
     def newFromPlane(cls, plane):
@@ -378,8 +393,6 @@ class Poly(object):
         dist = plane.normal.dot(up)
         up = (up - (plane.normal * dist)).normalized
 
-        origin = plane.normal * plane.dist
-
         # can cross the normal and up orthogonal vectors to get the
         # right vector
         right = up.cross(plane.normal)
@@ -387,12 +400,14 @@ class Poly(object):
         up *= 8192.0
         right *= 8192.0
 
+        origin = plane.normal * plane.dist
+
         verts = [ origin - right + up,
                   origin - right - up,
                   origin + right - up,
                   origin + right + up ]
 
-        return Poly(verts)
+        return cls(verts)
 
 
 def minVec(a, b):
@@ -430,7 +445,7 @@ class Bounds3D(object):
         if isinstance(other, Bounds3D):
             self.mins = minVec(self.mins, other.mins)
             self.maxs = maxVec(self.maxs, other.maxs)
-        elif isinstance(other, Poly):
+        elif isinstance(other, Poly3D):
             for v in other:
                 self.mins = minVec(self.mins, v)
                 self.maxs = maxVec(self.maxs, v)
@@ -457,12 +472,12 @@ class Bounds3D(object):
         v.append(Vec3(self.mins[0], self.maxs[1], self.maxs[2])) # top
 
         ret = []
-        ret.append(Poly([v[3], v[0], v[1], v[2]])) # bottom
-        ret.append(Poly([v[7], v[6], v[5], v[4]])) # top
-        ret.append(Poly([v[7], v[3], v[2], v[6]])) # front
-        ret.append(Poly([v[5], v[1], v[0], v[4]])) # back
-        ret.append(Poly([v[4], v[0], v[3], v[7]])) # left
-        ret.append(Poly([v[6], v[2], v[1], v[5]])) # right
+        ret.append(Poly3D([v[3], v[0], v[1], v[2]])) # bottom
+        ret.append(Poly3D([v[7], v[6], v[5], v[4]])) # top
+        ret.append(Poly3D([v[7], v[3], v[2], v[6]])) # front
+        ret.append(Poly3D([v[5], v[1], v[0], v[4]])) # back
+        ret.append(Poly3D([v[4], v[0], v[3], v[7]])) # left
+        ret.append(Poly3D([v[6], v[2], v[1], v[5]])) # right
 
         return ret
 
@@ -650,7 +665,7 @@ class Line2D(object):
     A line segment on the 2D x-y plane.
     """
 
-    PARSE_PATTERN = re.compile(r"\s*\(\s*\(\s*([^\s]+)\s+([^\s\)]+)\s*\)\s*\(\s*([^\s]+)\s+([^\s\)]+)\s*\)\s*\)")
+    PARSE_PATTERN = re.compile(r"\s*\{\s*\(\s*([^\s]+)\s+([^\s\)]+)\s*\)\s*\(\s*([^\s]+)\s+([^\s\)]+)\s*\)\s*\}")
 
     def __init__(self, *args):
         self._verts = (Vec2(), Vec2())
@@ -669,10 +684,10 @@ class Line2D(object):
         self._need_recalc = True
 
     def __str__(self):
-        return "( %s %s )" % self._verts
+        return "{ %s %s }" % self._verts
 
     def __repr__(self):
-        return "( %s %s )" % (repr(self._verts[0]), repr(self._verts[1]))
+        return "{ %s %s }" % (repr(self._verts[0]), repr(self._verts[1]))
 
     @classmethod
     def newFromString(cls, s):
@@ -694,6 +709,10 @@ class Line2D(object):
         self._dist   = self._normal.dot(self._verts[0])
 
         self._need_recalc = False
+
+    def __iter__(self):
+        for v in self._verts:
+            yield v
 
     def __getitem__(self, item):
         return self._verts[item]
@@ -816,3 +835,100 @@ class Line2D(object):
                  sides.count(SIDE_BACK),
                  sides.count(SIDE_CROSS),
                  sides.count(SIDE_ON) )
+
+
+class Poly2D(object):
+    """
+    Vertices run in CCW order.
+    """
+
+    def __init__(self, other=None):
+        self._verts = []
+
+        if other:
+            if isinstance(other, Poly2D):
+                self._verts = other._verts[:]
+            elif isinstance(other, list) or \
+                 isinstance(other, tuple):
+                self._verts = [Vec2(o) for o in other]
+            else:
+                raise ValueError("invalid value \"%s\"" % str(other))
+
+    def __str__(self):
+        return "{ " + " ".join([str(v) for v in self._verts]) + " }"
+
+    def __len__(self):
+        return len(self._verts)
+
+    def __iter__(self):
+        for v in self._verts:
+            yield v
+
+    def __getitem__(self, item):
+        return self._verts[item]
+
+    def append(self, v):
+        self._verts.append(Vec2(v))
+        self._need_recalc = True
+
+    def splitWithLine(self, line):
+        f_verts, b_verts = splitPoly(self._verts, line.normal, line.dist)
+
+        front = None
+        back = None
+
+        if f_verts:
+            front = Poly2D(f_verts)
+        if b_verts:
+            back = Poly2D(b_verts)
+
+        return (front, back)
+
+    @classmethod
+    def newFromString(cls, s):
+        # { ( x1 y1 ) ( x2 y2 ) ... }
+
+        def _skipWhites(str_, idx):
+            while idx < len(str_) and str_[idx] in string.whitespace:
+                idx += 1
+            return idx
+        def _skipNonWhites(str_, idx):
+            while idx < len(str_) and str_[idx] not in string.whitespace:
+                idx += 1
+            return idx
+
+        idx = _skipWhites(s, 0)
+
+        if s[idx] != "{":
+            raise ValueError("invalid poly format")
+        idx += 1
+
+        verts = []
+        while 1:
+            idx = _skipWhites(s, idx)
+            if s[idx] == "}":
+                break
+            elif s[idx] == "(":
+                idx += 1
+
+                idx = start = _skipWhites(s, idx)
+                idx = _skipNonWhites(s, idx)
+                x = float(s[start:idx])
+
+                idx = start = _skipWhites(s, idx)
+                idx = _skipNonWhites(s, idx)
+                y = float(s[start:idx])
+
+                idx = _skipWhites(s, idx)
+                if s[idx] != ")":
+                    raise ValueError("invalid vertex")
+                idx += 1
+
+                verts.append(Vec2(x, y))
+            else:
+                raise ValueError("invalid poly format")
+
+        if len(verts) < 3:
+            raise ValueError("too few vertices")
+
+        return cls(verts)
