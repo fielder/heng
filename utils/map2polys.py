@@ -6,52 +6,96 @@ import wad
 import inmap
 import vec
 
-#FIXME: initial node selection must account for 2-sided lines!!!
 
-map_lines = []
+def _getVertex(wad_vertex_idx):
+    # We negate the y to match our right-handed coordinate system.
+    x, y = inmap.vertexes[wad_vertex_idx]
+    return vec.Vec2(x, -y)
 
 
-def makeMapLines():
-    global map_lines
+class BLine(vec.Line2D):
+    def __init__(self, linedef, is_front_side):
+        self.linedef = linedef
+        self.sidedef = None
+        self.sidedef_back = None
+
+        sidenum_front = linedef["sidenum"][0]
+        sidenum_back = linedef["sidenum"][1]
+
+        # Note that to keep the normals pointing in the correct
+        # direction we reverse the vertex ordering.
+        if is_front_side:
+            v1 = _getVertex(linedef["v2"])
+            v2 = _getVertex(linedef["v1"])
+            self.sidedef = inmap.sidedefs[sidenum_front]
+
+            if sidenum_back != -1:
+                self.sidedef_back = inmap.sidedefs[sidenum_back]
+        else:
+            v1 = _getVertex(linedef["v1"])
+            v2 = _getVertex(linedef["v2"])
+            self.sidedef = inmap.sidedefs[sidenum_back]
+
+            if sidenum_front != -1:
+                self.sidedef_back = inmap.sidedefs[sidenum_front]
+
+        super(BLine, self).__init__(v1, v2)
+
+
+def _blinesFromLinedef(linedef):
+    ret = []
+
+    ret.append(BLine(linedef, True))
+
+    if linedef["sidenum"][1] != -1:
+        ret.append(BLine(linedef, False))
+
+    return ret
+
+
+def makeBLines():
+    ret = []
+
+    for linedef in inmap.linedefs:
+        ret.extend(_blinesFromLinedef(linedef))
 
     print ""
+    print "%d blines" % len(ret)
 
-    map_lines = []
-    for linedef in inmap.linedefs:
-        x1, y1 = inmap.vertexes[linedef["v1"]]
-        x2, y2 = inmap.vertexes[linedef["v2"]]
+    return ret
 
-        # NOTE: We negate the y coordinates to match our right-handed
-        # coordinate system.
-        v1 = (x1, -y1)
-        v2 = (x2, -y2)
 
-        line = vec.Line2D(v1, v2)
-        line.linedef = linedef
+class BSPLeaf(object):
+    def __init__(self):
+        self.blines = []
+        self.chopsurf = None
 
-        map_lines.append(line)
 
-    print "%d lines" % len(map_lines)
+class BSPNode(object):
+    def __init__(self):
+        self.line = None
+        self.front = None
+        self.back = None
 
 
 class NodeChoice(object):
-    line = None
-    axial = False
+    bline = None
     front = None
     back = None
     cross = None
-    on = None
     imbalance = 0.0
 
 
-def _chooseNode(choices):
-    axial = filter(lambda c: c.axial, choices)
-    nonaxial = filter(lambda c: not c.axial, choices)
+IMBALANCE_CUTOFF = 0.5
+
+def _chooseNodeLine(choices):
+    axial = filter(lambda c: c.bline.axial, choices)
+    nonaxial = filter(lambda c: not c.bline.axial, choices)
 
     for by_axis_list in (axial, nonaxial):
         best = None
         for c in sorted(by_axis_list, key=lambda x: x.imbalance):
-            if c.imbalance > 0.5 and best is not None:
+            if c.imbalance > IMBALANCE_CUTOFF and best is not None:
                 # don't choose a node with wildly imbalanced children
                 break
             if best is None:
@@ -59,56 +103,90 @@ def _chooseNode(choices):
             elif c.cross < best.cross:
                 best = c
         if best:
-            return best
+            return vec.Line2D(best.bline)
 
     # shouldn't happen
     raise Exception("no node chosen")
 
 
-def _getNodeChoices(lines):
+def _getNodeChoices(blines):
     choices = []
-    for l in lines:
-        front, back, cross, on = l.countLinesSides(lines)
+    for bl in blines:
+        front, back, cross, on = bl.countLinesSides(blines, include_on=False)
+        if on:
+            raise Exception("on lines when not requested")
 
         if cross or (front and back):
             nc = NodeChoice()
-            nc.line = l
-            nc.axial = l.axial
+            nc.bline = bl
             nc.front = front
             nc.back = back
             nc.cross = cross
-            nc.on = on
-            nc.imbalance = abs(nc.front - nc.back) / float(len(lines))
+            nc.imbalance = abs(nc.front - nc.back) / float(len(blines))
 
             choices.append(nc)
     return choices
 
 
-def _recursiveFindNodes(lines):
-    choices = _getNodeChoices(lines)
+def _splitLines(line, blines):
+    front = []
+    back = []
+
+    for bl in blines:
+        f, b, o = line.splitLine(bl, include_on=False)
+        if o:
+            raise Exception("on lines when not requested")
+
+        # can't lose the extras we tacked onto the blines
+        if f:
+            f.linedef = bl.linedef
+            f.sidedef = bl.sidedef
+            f.sidedef_back = bl.sidedef_back
+            front.append(f)
+        if b:
+            b.linedef = bl.linedef
+            b.sidedef = bl.sidedef
+            b.sidedef_back = bl.sidedef_back
+            back.append(b)
+
+    return (front, back)
+
+
+def _recursiveBSP(blines, chopsurf):
+    choices = _getNodeChoices(blines)
 
     if not choices:
         # no node found, the lines form a leaf
-        return None
 
-    chosen = _chooseNode(choices)
+        for bl in blines:
+            chopsurf, toss = chopsurf.splitWithLine(bl)
 
-    front, back, on = chosen.line.splitLines(lines)
+        ret = BSPLeaf()
+        ret.blines = blines
+        ret.chopsurf = chopsurf
+    else:
+        nodeline = _chooseNodeLine(choices)
 
-    ret = vec.Line2D(chosen.line)
-    ret.back = _recursiveFindNodes(back)
-    ret.front = _recursiveFindNodes(front)
+        front, back = _splitLines(nodeline, blines)
+
+        chop_front, chop_back = chopsurf.splitWithLine(nodeline)
+
+        ret = BSPNode()
+        ret.line = nodeline
+        ret.front = _recursiveBSP(front, chop_front)
+        ret.back = _recursiveBSP(back, chop_back)
+
     return ret
 
 
 stats = {}
 def _nodesStats(node, depth=0):
     stats["depth"] = max(stats["depth"], depth)
-    if not node:
+    if isinstance(node, BSPLeaf):
         stats["leafs"] += 1
     else:
         stats["nodes"] += 1
-        if node.axial:
+        if node.line.axial:
             stats["axial"] += 1
         else:
             stats["nonaxial"] += 1
@@ -116,11 +194,11 @@ def _nodesStats(node, depth=0):
         _nodesStats(node.front, depth + 1)
 
 
-def genNodes():
+def runBSP(blines, chopsurf):
     print ""
-    print "Finding BSP nodes..."
+    print "Recursive BSP..."
 
-    head = _recursiveFindNodes(map_lines)
+    head = _recursiveBSP(blines, chopsurf)
 
     stats["nodes"] = 0
     stats["leafs"] = 0
@@ -137,15 +215,15 @@ def genNodes():
     return head
 
 
-def makeChopsurf():
+def makeChopsurf(blines):
     x_coords = []
-    for l in map_lines:
-        x_coords.append(l[0].x)
-        x_coords.append(l[1].x)
+    for bl in blines:
+        x_coords.append(bl[0][0])
+        x_coords.append(bl[1][0])
     y_coords = []
-    for l in map_lines:
-        y_coords.append(l[0].y)
-        y_coords.append(l[1].y)
+    for bl in blines:
+        y_coords.append(bl[0][1])
+        y_coords.append(bl[1][1])
 
     min_x = min(x_coords)
     min_y = min(y_coords)
@@ -160,133 +238,79 @@ def makeChopsurf():
     return vec.Poly2D([v1, v2, v3, v4])
 
 
-def _blinesFromMapLine(l):
+def _makeWallQuad(v1, v2, low, high):
+    ret = vec.Poly3D()
+
+    ret.append((v1[0], low, v1[1]))
+    ret.append((v1[0], high, v1[1]))
+    ret.append((v2[0], high, v2[1]))
+    ret.append((v2[0], low, v2[1]))
+
+    return ret
+
+
+def _polysForBLine(bl):
     ret = []
 
-    def _add(v1, v2, top, bot):
-        bl = vec.Line2D(v1, v2)
-        bl.top = top
-        bl.bottom = bot
-        ret.append(bl)
-
-    sidenum_front = l.linedef["sidenum"][0]
-    sidenum_back = l.linedef["sidenum"][1]
-
-    sidedef_front = inmap.sidedefs[sidenum_front]
-    sector_front = inmap.sectors[sidedef_front["sector"]]
+    sector_front = inmap.sectors[bl.sidedef["sector"]]
     floor_front = sector_front["floorheight"]
     ceil_front = sector_front["ceilingheight"]
 
-    if sidenum_back == -1:
+    if not bl.sidedef_back:
         if floor_front < ceil_front:
-            _add(l[0], l[1], ceil_front, floor_front)
-    else:
-        sidedef_back = inmap.sidedefs[sidenum_back]
-        sector_back = inmap.sectors[sidedef_back["sector"]]
+            ret.append(_makeWallQuad(bl[0], bl[1], floor_front, ceil_front))
+    if bl.sidedef_back:
+        sector_back = inmap.sectors[bl.sidedef_back["sector"]]
         floor_back = sector_back["floorheight"]
         ceil_back = sector_back["ceilingheight"]
 
         if floor_back > floor_front:
-            # a step up going from font sector to back
-            _add(l[0], l[1], floor_back, floor_front)
-        elif floor_back < floor_front:
-            # a step down going from font sector to back
-            _add(l[1], l[0], floor_front, floor_back)
-
+            ret.append(_makeWallQuad(bl[0], bl[1], floor_front, floor_back))
         if ceil_back < ceil_front:
-            # watch your head
-            _add(l[0], l[1], ceil_front, ceil_back)
-        elif ceil_back > ceil_front:
-            # more head room
-            _add(l[1], l[0], ceil_back, ceil_front)
-
-        #TODO: "secret" 2-sided walls with a middle texture
+            ret.append(_makeWallQuad(bl[0], bl[1], ceil_back, ceil_front))
 
     return ret
 
 
-def makeBLines():
+def _polysForLeaf(leaf):
     ret = []
 
-    for l in map_lines:
-        ret.extend(_blinesFromMapLine(l))
+    # walls
+    for bl in leaf.blines:
+        ret.extend(_polysForBLine(bl))
 
-    print ""
-    print "%d blines" % len(ret)
+    # floor & ceiling
+    bl = leaf.blines[0]
+    floorheight = inmap.sectors[bl.sidedef["sector"]]["floorheight"]
+    ceilingheight = inmap.sectors[bl.sidedef["sector"]]["ceilingheight"]
+
+    floor = vec.Poly3D()
+    for v in leaf.chopsurf:
+        floor.append((v[0], floorheight, v[1]))
+    ret.append(floor)
+
+    ceil = vec.Poly3D()
+    for v in reversed(leaf.chopsurf):
+        ceil.append((v[0], ceilingheight, v[1]))
+    ret.append(ceil)
 
     return ret
 
 
-def _splitBLine(splitter, bline):
-    f, b, o = splitter.splitLine(bline)
+def _recursiveGenPolys(node):
+    ret = []
 
-    # the bline is colinear with the splitter, determine the side by
-    # looking at the normal
-    if o:
-        p = bline.normal * bline.dist + (bline.normal * 10.0)
-        side = splitter.pointSide(p)
-        if side == vec.SIDE_FRONT:
-            f = o
-        elif side == vec.SIDE_BACK:
-            b = o
-        else:
-            raise Exception("could not determine line (%s) side of splitter (%s)" % (repr(bline), repr(splitter)))
+    if isinstance(node, BSPLeaf):
+        ret.extend(_polysForLeaf(node))
+    else:
+        ret.extend(_recursiveGenPolys(node.back))
+        ret.extend(_recursiveGenPolys(node.front))
 
-    # preserve the top/bottom parts of the polygon
-    if f:
-        f.top = bline.top
-        f.bottom = bline.bottom
-    if b:
-        b.top = bline.top
-        b.bottom = bline.bottom
-
-    return (f, b)
+    return ret
 
 
-def _chopBLines(node, blines):
-    front = []
-    back = []
-
-    for bl in blines:
-        f, b = _splitBLine(node, bl)
-        if f:
-            front.append(f)
-        if b:
-            back.append(b)
-
-    return (front, back)
-
-
-def _polysForLeaf(blines, chopsurf):
-    polys = []
-
-    print ""
-    for bl in blines:
-        print bl,bl.top,bl.bottom
-    #TODO: ensure each bline faces each other
-    #TODO: chop the chopsurf with the blines
-    #TODO: make 3d polys for blines, floor, and ceiling
-
-    return polys
-
-
-def _recursiveBSP(node, blines, chopsurf):
-    if node is None:
-        # is a leaf
-        return _polysForLeaf(blines, chopsurf)
-
-    blines_front, blines_back = _chopBLines(node, blines)
-
-    chop_front, chop_back = chopsurf.splitWithLine(node)
-
-    back = _recursiveBSP(node.back, blines_back, chop_back)
-    front = _recursiveBSP(node.front, blines_front, chop_front)
-
-    return back + front
-
-
-def genPolys(head, blines, chopsurf):
-    ret = _recursiveBSP(head, blines, chopsurf)
+def genPolys(head):
+    ret = _recursiveGenPolys(head)
 
     print ""
     print "%d polys" % len(ret)
@@ -298,12 +322,12 @@ def writePolys(path, polys):
     print ""
     print "Writing \"%s\" ..." % path
 
-#   fp = open(path, "wt")
+    fp = open(path, "wt")
 
-    #...
-    #...
+    for p in polys:
+        fp.write("%s\n" % str(p))
 
-#   fp.close()
+    fp.close()
 
 
 if __name__ == "__main__":
@@ -325,11 +349,10 @@ if __name__ == "__main__":
     for mapname in mapnames:
         inmap.load(w, mapname)
 
-        makeMapLines()
-        head = genNodes()
-        chopsurf = makeChopsurf()
         blines = makeBLines()
-        polys = genPolys(head, blines, chopsurf)
+        chopsurf = makeChopsurf(blines)
+        head = runBSP(blines, chopsurf)
+        polys = genPolys(head)
 
         outpath = "%s.polys" % mapname
         writePolys(outpath, polys)
