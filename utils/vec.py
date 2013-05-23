@@ -1,6 +1,4 @@
-import re
 import math
-import string
 import operator
 import collections
 
@@ -34,6 +32,38 @@ def _isXY(x):
 
 def _floatVals(vals):
     return tuple((float(v) for v in vals))
+
+def _reprVerts(verts):
+    return "{ " + " ".join([repr(v) for v in verts]) + " }"
+
+def _parseVertsString(s):
+    elts = s.strip().split()
+
+    if elts.pop(0) != "{" or elts.pop() != "}":
+        raise ValueError("invalid vertex list format")
+
+    verts = []
+
+    idx = 0
+    while idx < len(elts):
+        if elts[idx] != "(":
+            raise ValueError("invalid vertex")
+        start = idx
+        while elts[idx] != ")":
+            idx += 1
+        idx += 1
+
+        vals = [float(e) for e in elts[start + 1:idx - 1]]
+        if len(vals) == 2:
+            v = Vec2(vals[0], vals[1])
+        elif len(vals) == 3:
+            v = Vec3(vals[0], vals[1], vals[2])
+        else:
+            raise ValueError("invalid vertex \"%s\"" % str(vals))
+
+        verts.append(v)
+
+    return verts
 
 def classifyDist(d):
     if math.fabs(d) < SIDE_EPSILON:
@@ -142,11 +172,11 @@ class Vec3(object):
         else:
             raise ValueError("invalid value \"%s\"" % str(args))
 
-    def __str__(self):
-        return "( %g %g %g )" % self._xyz
-
     def __repr__(self):
-        return repr(self._xyz)
+        x = repr(self._xyz[0])
+        y = repr(self._xyz[1])
+        z = repr(self._xyz[2])
+        return "( %s %s %s )" % (x, y, z)
 
     def __len__(self):
         return len(self._xyz)
@@ -271,8 +301,8 @@ class Poly3D(object):
 
         self._need_recalc = False
 
-    def __str__(self):
-        return "{ " + " ".join([str(v) for v in self._verts]) + " }"
+    def __repr__(self):
+        return _reprVerts(self._verts)
 
     def __len__(self):
         return len(self._verts)
@@ -318,55 +348,9 @@ class Poly3D(object):
 
     @classmethod
     def newFromString(cls, s):
-        # { ( x1 y1 z1 ) ( x2 y2 z2 ) ... }
-
-        def _skipWhites(str_, idx):
-            while idx < len(str_) and str_[idx] in string.whitespace:
-                idx += 1
-            return idx
-        def _skipNonWhites(str_, idx):
-            while idx < len(str_) and str_[idx] not in string.whitespace:
-                idx += 1
-            return idx
-
-        idx = _skipWhites(s, 0)
-
-        if s[idx] != "{":
-            raise ValueError("invalid poly format")
-        idx += 1
-
-        verts = []
-        while 1:
-            idx = _skipWhites(s, idx)
-            if s[idx] == "}":
-                break
-            elif s[idx] == "(":
-                idx += 1
-
-                idx = start = _skipWhites(s, idx)
-                idx = _skipNonWhites(s, idx)
-                x = float(s[start:idx])
-
-                idx = start = _skipWhites(s, idx)
-                idx = _skipNonWhites(s, idx)
-                y = float(s[start:idx])
-
-                idx = start = _skipWhites(s, idx)
-                idx = _skipNonWhites(s, idx)
-                z = float(s[start:idx])
-
-                idx = _skipWhites(s, idx)
-                if s[idx] != ")":
-                    raise ValueError("invalid vertex")
-                idx += 1
-
-                verts.append(Vec3(x, y, z))
-            else:
-                raise ValueError("invalid poly format")
-
+        verts = _parseVertsString(s)
         if len(verts) < 3:
             raise ValueError("too few vertices")
-
         return cls(verts)
 
     @classmethod
@@ -381,7 +365,7 @@ class Poly3D(object):
                 best = math.fabs(val)
                 majoraxis = idx
         if majoraxis is None:
-            raise Exception("no major axis for normal \"%s\"" % str(plane.normal))
+            raise Exception("no major axis for plane %s" % str(plane))
 
         if majoraxis == 0:
             up = Vec3(0, 1, 0)
@@ -410,12 +394,12 @@ class Poly3D(object):
         return cls(verts)
 
 
-def minVec(a, b):
+def _minVec(a, b):
     return Vec3( min(a[0], b[0]),
                  min(a[1], b[1]),
                  min(a[2], b[2]) )
 
-def maxVec(a, b):
+def _maxVec(a, b):
     return Vec3( max(a[0], b[0]),
                  max(a[1], b[1]),
                  max(a[2], b[2]) )
@@ -443,15 +427,15 @@ class Bounds3D(object):
 
     def update(self, other):
         if isinstance(other, Bounds3D):
-            self.mins = minVec(self.mins, other.mins)
-            self.maxs = maxVec(self.maxs, other.maxs)
+            self.mins = _minVec(self.mins, other.mins)
+            self.maxs = _maxVec(self.maxs, other.maxs)
         elif isinstance(other, Poly3D):
             for v in other:
-                self.mins = minVec(self.mins, v)
-                self.maxs = maxVec(self.maxs, v)
+                self.mins = _minVec(self.mins, v)
+                self.maxs = _maxVec(self.maxs, v)
         elif _isXYZ(other):
-            self.mins = minVec(self.mins, other)
-            self.maxs = maxVec(self.maxs, other)
+            self.mins = _minVec(self.mins, other)
+            self.maxs = _maxVec(self.maxs, other)
         else:
             raise ValueError("invalid value \"%s\"" % str(other))
 
@@ -578,11 +562,10 @@ class Vec2(object):
         else:
             raise ValueError("invalid value \"%s\"" % str(args))
 
-    def __str__(self):
-        return "( %g %g )" % self._xy
-
     def __repr__(self):
-        return repr(self._xy)
+        x = repr(self._xy[0])
+        y = repr(self._xy[1])
+        return "( %s %s )" % (x, y)
 
     def __len__(self):
         return len(self._xy)
@@ -665,8 +648,6 @@ class Line2D(object):
     A line segment on the 2D x-y plane.
     """
 
-    PARSE_PATTERN = re.compile(r"\s*\{\s*\(\s*([^\s]+)\s+([^\s\)]+)\s*\)\s*\(\s*([^\s]+)\s+([^\s\)]+)\s*\)\s*\}")
-
     def __init__(self, *args):
         self._verts = (Vec2(), Vec2())
 
@@ -683,20 +664,15 @@ class Line2D(object):
 
         self._need_recalc = True
 
-    def __str__(self):
-        return "{ %s %s }" % self._verts
-
     def __repr__(self):
-        return "{ %s %s }" % (repr(self._verts[0]), repr(self._verts[1]))
+        return _reprVerts(self._verts)
 
     @classmethod
     def newFromString(cls, s):
-        m = cls.PARSE_PATTERN.match(s.replace(",", ""))
-        if not m:
-            raise ValueError("invalid line string \"%s\"" % s)
-        v1 = (float(m.group(1)), float(m.group(2)))
-        v2 = (float(m.group(3)), float(m.group(4)))
-        return cls(v1, v2)
+        verts = _parseVertsString(s)
+        if len(verts) != 2:
+            raise ValueError("invalid vertex count")
+        return cls(verts[0], verts[1])
 
     def _recalc(self):
         if not self._need_recalc:
@@ -755,7 +731,7 @@ class Line2D(object):
         dist = (p[0] * self.normal[0] + p[1] * self.normal[1]) - self.dist
         return classifyDist(dist)
 
-    def lineSide(self, other):
+    def lineSide(self, other, include_on=True):
         s1 = self.pointSide(other[0])
         s2 = self.pointSide(other[1])
 
@@ -767,6 +743,14 @@ class Line2D(object):
             side = s1
         else:
             side = SIDE_CROSS
+
+        if side == SIDE_ON and not include_on:
+            # caller wants colinear lines to be classified as on the
+            # front or back side, never on the line
+            p = other[0] + (other.normal * 10.0)
+            side = self.pointSide(p)
+            if side == SIDE_ON:
+                raise Exception("side check failed %s, other is %s" % (self, other))
 
         return side
 
@@ -795,8 +779,8 @@ class Line2D(object):
 
         return (front, back)
 
-    def splitLine(self, other):
-        side = self.lineSide(other)
+    def splitLine(self, other, include_on=True):
+        side = self.lineSide(other, include_on=include_on)
 
         front = None
         back = None
@@ -815,12 +799,12 @@ class Line2D(object):
 
         return (front, back, on)
 
-    def splitLines(self, lines):
+    def splitLines(self, lines, include_on=True):
         front = []
         back = []
         on = []
         for l in lines:
-            f, b, o = self.splitLine(l)
+            f, b, o = self.splitLine(l, include_on=include_on)
             if f:
                 front.append(f)
             if b:
@@ -829,8 +813,8 @@ class Line2D(object):
                 on.append(o)
         return (front, back, on)
 
-    def countLinesSides(self, lines):
-        sides = [self.lineSide(l) for l in lines]
+    def countLinesSides(self, lines, include_on=True):
+        sides = [self.lineSide(l, include_on=include_on) for l in lines]
         return ( sides.count(SIDE_FRONT),
                  sides.count(SIDE_BACK),
                  sides.count(SIDE_CROSS),
@@ -854,8 +838,8 @@ class Poly2D(object):
             else:
                 raise ValueError("invalid value \"%s\"" % str(other))
 
-    def __str__(self):
-        return "{ " + " ".join([str(v) for v in self._verts]) + " }"
+    def __repr__(self):
+        return _reprVerts(self._verts)
 
     def __len__(self):
         return len(self._verts)
@@ -886,49 +870,7 @@ class Poly2D(object):
 
     @classmethod
     def newFromString(cls, s):
-        # { ( x1 y1 ) ( x2 y2 ) ... }
-
-        def _skipWhites(str_, idx):
-            while idx < len(str_) and str_[idx] in string.whitespace:
-                idx += 1
-            return idx
-        def _skipNonWhites(str_, idx):
-            while idx < len(str_) and str_[idx] not in string.whitespace:
-                idx += 1
-            return idx
-
-        idx = _skipWhites(s, 0)
-
-        if s[idx] != "{":
-            raise ValueError("invalid poly format")
-        idx += 1
-
-        verts = []
-        while 1:
-            idx = _skipWhites(s, idx)
-            if s[idx] == "}":
-                break
-            elif s[idx] == "(":
-                idx += 1
-
-                idx = start = _skipWhites(s, idx)
-                idx = _skipNonWhites(s, idx)
-                x = float(s[start:idx])
-
-                idx = start = _skipWhites(s, idx)
-                idx = _skipNonWhites(s, idx)
-                y = float(s[start:idx])
-
-                idx = _skipWhites(s, idx)
-                if s[idx] != ")":
-                    raise ValueError("invalid vertex")
-                idx += 1
-
-                verts.append(Vec2(x, y))
-            else:
-                raise ValueError("invalid poly format")
-
+        verts = _parseVertsString(s)
         if len(verts) < 3:
             raise ValueError("too few vertices")
-
         return cls(verts)
