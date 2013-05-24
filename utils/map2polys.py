@@ -284,15 +284,16 @@ def _polysForLeaf(leaf):
     floorheight = inmap.sectors[bl.sidedef["sector"]]["floorheight"]
     ceilingheight = inmap.sectors[bl.sidedef["sector"]]["ceilingheight"]
 
-    floor = vec.Poly3D()
-    for v in leaf.chopsurf:
-        floor.append((v[0], floorheight, v[1]))
-    ret.append(floor)
+    if ceilingheight > floorheight:
+        floor = vec.Poly3D()
+        for v in leaf.chopsurf:
+            floor.append((v[0], floorheight, v[1]))
+        ret.append(floor)
 
-    ceil = vec.Poly3D()
-    for v in reversed(leaf.chopsurf):
-        ceil.append((v[0], ceilingheight, v[1]))
-    ret.append(ceil)
+        ceil = vec.Poly3D()
+        for v in reversed(leaf.chopsurf):
+            ceil.append((v[0], ceilingheight, v[1]))
+        ret.append(ceil)
 
     return ret
 
