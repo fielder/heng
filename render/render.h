@@ -32,8 +32,7 @@ struct r_vars_s
 	float fov_x; /* radians */
 	float fov_y; /* radians */
 
-	float near_dist;
-	float far_dist;
+	float dist;
 
 	float pos[3];
 
@@ -46,9 +45,6 @@ struct r_vars_s
 	float forward[3];
 
 	struct viewplane_s vplanes[4];
-
-	/* the corner-most rays terminating points */
-	float far[4][3];
 };
 
 extern struct r_vars_s r_vars;
@@ -58,7 +54,7 @@ extern void
 Setup (uint8_t *buf, int w, int h, int pitch, float fov_x);
 
 extern void
-CameraRotatePixels (float dx, float dy);
+CameraRotatePixels (float screen_dx, float screen_dy);
 
 extern void
 CameraThrust (float left, float up, float forward);

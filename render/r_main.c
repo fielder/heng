@@ -5,7 +5,8 @@
 #include "bswap.h"
 #include "render.h"
 #include "vec.h"
-#include "map.h"
+#include "r_defs.h"
+//#include "map.h"
 
 struct r_vars_s r_vars;
 
@@ -15,8 +16,6 @@ CameraChanged (void)
 {
 	float cam2world[3][3];
 	float v[3];
-	float x, y, z, xadj, yadj;
-	int i;
 
 	float ang, adj;
 	struct viewplane_s *p;
@@ -34,45 +33,11 @@ CameraChanged (void)
 	/* view to world transformation matrix */
 	Vec_AnglesMatrix (r_vars.angles, cam2world, ROT_MATRIX_ORDER_ZYX);
 
-	/* Find the screen's corner-most pixel rays in world space.
-	 * Note that screen pixels projected to the back of the view
-	 * frustum are large. So, the center of the pixel will be
-	 * adjusted inward from the frustum edge accordingly.
-	 */
-	x = r_vars.far_dist * tan(r_vars.fov_x / 2.0);
-	y = r_vars.far_dist * tan(r_vars.fov_y / 2.0);
-	z = r_vars.far_dist;
-
-	xadj = 0.5 * (x / (r_vars.w / 2.0));
-	yadj = 0.5 * (y / (r_vars.h / 2.0));
-	// top-left
-	r_vars.far[0][0] = x - xadj;
-	r_vars.far[0][1] = y - yadj;
-	r_vars.far[0][2] = z;
-	// top-right
-	r_vars.far[1][0] = -x + xadj;
-	r_vars.far[1][1] = y - yadj;
-	r_vars.far[1][2] = z;
-	// bottom-left
-	r_vars.far[2][0] = x - xadj;
-	r_vars.far[2][1] = -y + yadj;
-	r_vars.far[2][2] = z;
-	// bottom-right
-	r_vars.far[3][0] = -x + xadj;
-	r_vars.far[3][1] = -y + yadj;
-	r_vars.far[3][2] = z;
-
-	/* move corner rays to world space */
-	for (i = 0; i < 4; i++)
-	{
-		Vec_Transform (cam2world, r_vars.far[i], v);
-		Vec_Add (r_vars.pos, v, r_vars.far[i]);
-	}
-
 	/* set up view planes */
 
 	adj = 2.0 * (M_PI / 180.0); /* debug: adjust view plane inwards */
 
+	/* left */
 	p = &r_vars.vplanes[VPLANE_LEFT];
 	ang = (r_vars.fov_x / 2.0) - adj;
 	v[0] = -cos (ang);
@@ -81,6 +46,7 @@ CameraChanged (void)
 	Vec_Transform (cam2world, v, p->normal);
 	p->dist = Vec_Dot (p->normal, r_vars.pos);
 
+	/* right */
 	p = &r_vars.vplanes[VPLANE_RIGHT];
 	ang = (r_vars.fov_x / 2.0) - adj;
 	v[0] = cos (ang);
@@ -89,6 +55,7 @@ CameraChanged (void)
 	Vec_Transform (cam2world, v, p->normal);
 	p->dist = Vec_Dot (p->normal, r_vars.pos);
 
+	/* top */
 	p = &r_vars.vplanes[VPLANE_TOP];
 	ang = (r_vars.fov_y / 2.0) - adj;
 	v[0] = 0.0;
@@ -97,6 +64,7 @@ CameraChanged (void)
 	Vec_Transform (cam2world, v, p->normal);
 	p->dist = Vec_Dot (p->normal, r_vars.pos);
 
+	/* bottom */
 	p = &r_vars.vplanes[VPLANE_BOTTOM];
 	ang = (r_vars.fov_y / 2.0) - adj;
 	v[0] = 0.0;
@@ -107,16 +75,24 @@ CameraChanged (void)
 }
 
 
-static void
-InitCamera (float fov_x)
+void
+Setup (uint8_t *buf, int w, int h, int pitch, float fov_x)
 {
+	SwapInit ();
+
+	/* screen buffer */
+	r_vars.screen = buf;
+	r_vars.w = w;
+	r_vars.h = h;
+	r_vars.pitch = pitch;
+
+	/* camera */
 	r_vars.center_x = r_vars.w / 2.0 - 0.5;
 	r_vars.center_y = r_vars.h / 2.0 - 0.5;
 
 	r_vars.fov_x = fov_x;
-	r_vars.near_dist = (r_vars.w / 2.0) / tan(r_vars.fov_x / 2.0);
-	r_vars.far_dist = 64 * 48;
-	r_vars.fov_y = 2.0 * atan((r_vars.h / 2.0) / r_vars.near_dist);
+	r_vars.dist = (r_vars.w / 2.0) / tan(r_vars.fov_x / 2.0);
+	r_vars.fov_y = 2.0 * atan((r_vars.h / 2.0) / r_vars.dist);
 
 	Vec_Clear (r_vars.pos);
 	Vec_Clear (r_vars.angles);
@@ -126,26 +102,12 @@ InitCamera (float fov_x)
 
 
 void
-Setup (uint8_t *buf, int w, int h, int pitch, float fov_x)
-{
-	SwapInit ();
-
-	r_vars.screen = buf;
-	r_vars.w = w;
-	r_vars.h = h;
-	r_vars.pitch = pitch;
-
-	InitCamera (fov_x);
-}
-
-
-void
-CameraRotatePixels (float dx, float dy)
+CameraRotatePixels (float screen_dx, float screen_dy)
 {
 	/* using right-handed coordinate system, so positive yaw goes
 	 * left across the screen and positive roll goes down */
-	r_vars.angles[YAW] += r_vars.fov_x * (-dx / r_vars.w);
-	r_vars.angles[PITCH] += r_vars.fov_y * (dy / r_vars.h);
+	r_vars.angles[YAW] += r_vars.fov_x * (-screen_dx / r_vars.w);
+	r_vars.angles[PITCH] += r_vars.fov_y * (screen_dy / r_vars.h);
 
 	/* restrict camera angles */
 	if (r_vars.angles[PITCH] > M_PI / 2.0)
@@ -188,7 +150,7 @@ ClearScreen (void)
 {
 	int y;
 
-	if (((uintptr_t)r_vars.screen & 0x3) == 0 && (r_vars.w % 4) == 0)
+	if (((uintptr_t)r_vars.screen & 0x3) == 0 && (r_vars.w & 0x3) == 0)
 	{
 		for (y = 0; y < r_vars.h; y++)
 		{
@@ -234,8 +196,8 @@ _ProjectPoint (const float p[3], int *u, int *v)
 		return 0;
 
 	zi = 1.0 / out[2];
-	*u = r_vars.center_x - r_vars.near_dist * zi * out[0];
-	*v = r_vars.center_y - r_vars.near_dist * zi * out[1];
+	*u = r_vars.center_x - r_vars.dist * zi * out[0];
+	*v = r_vars.center_y - r_vars.dist * zi * out[1];
 
 	return 1;
 }
@@ -263,11 +225,11 @@ ClipLine3D (const float normal[3], float dist, float verts[2][3], float out[2][3
 	d1 = Vec_Dot(verts[0], normal) - dist;
 	d2 = Vec_Dot(verts[1], normal) - dist;
 
-	if (d1 < 0.0 && d2 < 0.0)
+	if (d1 < PLANE_DIST_EPSILON && d2 < PLANE_DIST_EPSILON)
 	{
 		return 0;
 	}
-	else if (d1 >= 0.0 && d2 >= 0.0)
+	else if (d1 >= PLANE_DIST_EPSILON && d2 >= PLANE_DIST_EPSILON)
 	{
 		Vec_Copy (verts[0], out[0]);
 		Vec_Copy (verts[1], out[1]);
@@ -297,7 +259,7 @@ ClipLine3D (const float normal[3], float dist, float verts[2][3], float out[2][3
 }
 
 static void
-DrawLine3D (float p1[3], float p2[3], int c)
+DrawLine3D (const float p1[3], const float p2[3], int c)
 {
 	float verts[2][2][3];
 	int clipidx = 0;
@@ -322,6 +284,7 @@ DrawLine3D (float p1[3], float p2[3], int c)
 	}
 }
 
+/*
 static void
 DrawMapLine2D (const struct line2d_s *l, int c)
 {
@@ -336,15 +299,72 @@ DrawMapLine2D (const struct line2d_s *l, int c)
 
 	DrawLine3D (a, b, c);
 }
+*/
 
 #endif
+
+
+uint8_t *p_pixels = NULL;
+int p_w, p_h;
+const float p_verts[4][3] = {
+	{0, 72, 0},
+	{0, 0, 0},
+	{128, 0, 0},
+	{128, 72, 0},
+};
+void
+SetTexture (void *buf, int w, int h)
+{
+	p_pixels = buf;
+	p_w = w;
+	p_h = h;
+}
+
+
+static void
+DrawGrid (SZ, COLOR)
+{
+	int i;
+	float a[3], b[3];
+
+	for (i = 0; i <= SZ; i += 64)
+	{
+		/* X-Z plane */
+		a[0] = i; a[1] = 0; a[2] = 0;
+		b[0] = i; b[1] = 0; b[2] = SZ;
+		DrawLine3D (a, b, COLOR);
+		a[0] = 0; a[1] = 0; a[2] = i;
+		b[0] = SZ; b[1] = 0; b[2] = i;
+		DrawLine3D (a, b, COLOR);
+
+		/* X-Y plane */
+		a[0] = i; a[1] = 0; a[2] = 0;
+		b[0] = i; b[1] = SZ; b[2] = 0;
+		DrawLine3D (a, b, COLOR - 4);
+		a[0] = 0; a[1] = i; a[2] = 0;
+		b[0] = SZ; b[1] = i; b[2] = 0;
+		DrawLine3D (a, b, COLOR - 4);
+
+		/* Z-Y plane */
+		a[0] = 0; a[1] = 0; a[2] = i;
+		b[0] = 0; b[1] = SZ; b[2] = i;
+		DrawLine3D (a, b, COLOR - 8);
+		a[0] = 0; a[1] = i; a[2] = 0;
+		b[0] = 0; b[1] = i; b[2] = SZ;
+		DrawLine3D (a, b, COLOR - 4);
+	}
+}
 
 
 void
 DrawWorld (void)
 {
-	int i;
-	float xyz[3];
+	int i, ni;
+//	float xyz[3];
+
+	DrawGrid (1024, 16 * 7 - 2);
+
+//	DrawPixmap (p_pixels, p_w, p_h, 4, 4);
 
 	/*
 	for (i = 0; i < map.num_lines_2d; i++)
@@ -355,8 +375,8 @@ DrawWorld (void)
 	for (i = 0; i < map.num_verts; i++)
 		DrawPoint3D (map.verts[i].xyz, 4);
 	*/
-	for (i = 0; i < map.num_edges; i++)
-		DrawLine3D (map.verts[map.edges[i].v[0]].xyz, map.verts[map.edges[i].v[1]].xyz, 4);
+//	for (i = 0; i < map.num_edges; i++)
+//		DrawLine3D (map.verts[map.edges[i].v[0]].xyz, map.verts[map.edges[i].v[1]].xyz, 4);
 
 	/*
 	for (i = 0; i < map.num_verts_2d; i++)
@@ -368,23 +388,10 @@ DrawWorld (void)
 	}
 	*/
 
-	xyz[0] = 0; xyz[1] = 0; xyz[2] = 0;
-	for (i = 0; i < 64; i++)
+	for (i = 0; i < sizeof(p_verts) / sizeof(p_verts[0]); i++)
 	{
-		xyz[0] = i * 2;
-		DrawPoint3D (xyz, 16 * 11);
-	}
-	xyz[0] = 0; xyz[1] = 0; xyz[2] = 0;
-	for (i = 0; i < 64; i++)
-	{
-		xyz[1] = i * 2;
-		DrawPoint3D (xyz, 16 * 7 + 8);
-	}
-	xyz[0] = 0; xyz[1] = 0; xyz[2] = 0;
-	for (i = 0; i < 64; i++)
-	{
-		xyz[2] = i * 2;
-		DrawPoint3D (xyz, 16 * 12 + 8);
+		ni = (i + 1) % (sizeof(p_verts) / sizeof(p_verts[0]));
+		DrawLine3D (p_verts[i], p_verts[ni], 16 * 7);
 	}
 }
 

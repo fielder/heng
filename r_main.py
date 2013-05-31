@@ -1,20 +1,19 @@
 import math
 import ctypes
 
+import misc
 import hvars
 import io
+import r_pic
+import console
+from utils import pcx
 
 palettes = []
 _cur_pal_idx = -1
 
 
 def _paletteAtOffset(raw, off):
-    pal = []
-    for coloridx in xrange(256):
-        rgb = raw[off:off + 3]
-        off += 3
-        pal.append((ord(rgb[0]), ord(rgb[1]), ord(rgb[2])))
-    return pal
+    return [(ord(rgb[0]), ord(rgb[1]), ord(rgb[2])) for rgb in misc.chopSequence(raw, 3)]
 
 
 def init():
@@ -32,10 +31,24 @@ def init():
         palettes.append(_paletteAtOffset(raw, off))
     print "Read %d palettes" % len(palettes)
 
+    r_pic.init()
+
     setPalette(0)
+
+p_tex = None
 
 
 def refresh():
+    global p_tex
+    global p_w
+    global p_h
+
+    if not p_tex:
+        name = "TOMW2_1"
+        p_tex = r_pic.getPixmap(name)
+        hvars.c_api.SetTexture(p_tex.pixels, p_tex.w, p_tex.h)
+        print name, p_tex.w, p_tex.h
+
     hvars.c_api.ClearScreen()
 
     # 2D drawing
@@ -45,6 +58,9 @@ def refresh():
 
     # 3D drawing
     hvars.c_api.DrawWorld()
+
+    if console.up:
+        console.draw(hvars.HEIGHT - (hvars.HEIGHT / 4))
 
 
 def setPalette(palidx):

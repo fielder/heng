@@ -1,17 +1,21 @@
 #ifndef __MAP_H__
 #define __MAP_H__
 
-/* in-memory structures */
+/* in-memory map structures */
 
-#if 0
+struct mvertex_s
+{
+	float xyz[3];
+};
+
 enum
 {
 	PLANE_X, /* normal (1, 0, 0) */
 	PLANE_Y, /* normal (0, 1, 0) */
 	PLANE_Z, /* normal (0, 0, 1) */
 	PLANE_XY, /* normal (x, y, 0) */
-	PLANE_YZ, /* normal (0, y, z) */
 	PLANE_XZ, /* normal (x, 0, z) */
+	PLANE_YZ, /* normal (0, y, z) */
 	PLANE_OTHER
 };
 
@@ -19,98 +23,67 @@ struct mplane_s
 {
 	float normal[3];
 	float dist;
-	unsigned char type;
-	unsigned char signbits;
-	unsigned char pad[2];
+	short type;
+	short signbits;
 };
 
-#define NODEFLAGS_LEAF 0x80000000
-
-struct mnode_s
+struct medge_s
 {
-	/* shared with leaf structure */
-	unsigned int flags;
-	short mins[3];
-	short maxs[3];
-
-	/* specific to node */
-	void *children[2]; /* could be node or leaf */
-	struct mplane_s *plane;
+	unsigned short v[2];
+	unsigned int cache_offset;
 };
 
-struct mleaf_s
+struct msector_s
 {
-	/* shared with node structure */
-	unsigned int flags;
-	short mins[3];
-	short maxs[3];
+	int lightlevel;
+	int lightstyle;
+	int contents;
+};
 
-	/* specific to leaf */
-	unsigned int *planes;
-	//TODO: light value, light style
+struct mface_s
+{
+	struct msector_s *sector;
+	//TODO: texture, has transparent pixels
+	//TODO: vecs
 };
 
 struct msurface_s
 {
-	unsigned int *eplanes;
-	int num_eplanes;
-	struct mtexinfo_s *texinfo;
+	struct mplane_s *plane;
+	int side;
+
+	unsigned int *edges; /* in surface edge list */
+	int num_edges;
+
+	struct mface_s *face; /* unused for portal surfaces */
 };
 
-struct mtexinfo_s
-{
-	int xoff, yoff;
-	struct mtex_s *tex;
-};
+#define NODEFLAG_LEAF 0x80000000
 
-struct mtex_s
+struct mleaf_s
 {
-	int w, h;
-	int has_transparent;
-	unsigned char *pixels;
-};
-
-struct mthing_s
-{
-	float pos[3];
-	float angle;
-	int type;
 	int flags;
+	short mins[3], maxs[3];
+
+	struct msurface_s *surfaces;
+	int num_surfaces;
 };
 
-struct map_s
+struct mnode_s
 {
-	struct mplane_s *planes;
-	int num_planes;
+	int flags;
+	short mins[3], maxs[3];
 
-	struct mnode_s *nodes;
-	int num_nodes;
+	struct mplane_s *plane;
 
-	struct msurface_s *surfs;
-	int num_surfs;
+	struct msurface_s *surfaces;
+	int num_surfaces;
+	int num_portals;
 
-	struct mtexinfo_s *texinfos;
-	int num_texinfos;
-
-	struct mtex_s *textures;
-	int num_textures;
-
-	struct mthing_s *things;
-	int num_things;
-};
-#endif
-
-struct vertex_s
-{
-	float xyz[3];
+	void *children[2]; /* front, back */
 };
 
-struct edge_s
-{
-	unsigned int v[2];
-	//TODO: cache
-};
-
+#if 0
 struct vertex2d_s
 {
 	float xy[2];
@@ -126,15 +99,38 @@ struct leaf2d_s
 	struct line2d_s *lines;
 	int numlines;
 };
+#endif
 
 struct map_s
 {
-	struct vertex_s *verts;
+	struct mvertex_s *verts
 	int num_verts;
 
-	struct edge_s *edges;
+	struct mplane_s *planes
+	int num_planes;
+
+	struct medge_s *edges
 	int num_edges;
 
+	struct msector_s *sectors
+	int num_sectors;
+
+	struct mface_s *faces
+	int num_faces;
+
+	struct msurface_s *surfaces
+	int num_surfaces;
+
+	struct mleaf_s *leafs
+	int num_leafs;
+
+	struct mnode_s *nodes
+	int num_nodes;
+
+	unsigned int *surfedges;
+	int num_surfedges;
+
+#if 0
 	struct vertex2d_s *verts_2d;
 	int num_verts_2d;
 
@@ -143,6 +139,7 @@ struct map_s
 
 	struct leaf2d_s *leafs_2d;
 	int num_leafs_2d;
+#endif
 };
 
 extern struct map_s map;

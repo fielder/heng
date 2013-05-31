@@ -6,6 +6,7 @@ import ctypes
 import hvars
 import io
 import r_main
+import console
 from utils import wad
 
 
@@ -79,8 +80,13 @@ if __name__ == "__main__":
     io.init()
     r_main.init()
 
-    _loadMap(sys.argv[2])
+#   _loadMap(sys.argv[2])
 
+    console.write("test line 1\n")
+    console.write("test line 2\n")
+#   console.write("two lines\npart of the 2nd\n")
+
+    io.bind("backquote", console.toggle)
     io.bind("escape", _quit)
     io.bind("f", _showFPS)
     io.bind("mousemove", _mouseMove)

@@ -8,8 +8,7 @@ TARGET = $(OBJDIR)/render.so
 OBJS =	$(OBJDIR)/bswap.o \
 	$(OBJDIR)/vec.o \
 	$(OBJDIR)/r_main.o \
-	$(OBJDIR)/r_sprite.o \
-	$(OBJDIR)/map.o
+	$(OBJDIR)/r_sprite.o
 
 all: $(TARGET)
 
@@ -29,6 +28,4 @@ $(OBJDIR)/vec.o: vec.c
 $(OBJDIR)/r_main.o: r_main.c
 	$(CC) -c $(CFLAGS) $? -o $@
 $(OBJDIR)/r_sprite.o: r_sprite.c
-	$(CC) -c $(CFLAGS) $? -o $@
-$(OBJDIR)/map.o: map.c
 	$(CC) -c $(CFLAGS) $? -o $@
