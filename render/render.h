@@ -13,10 +13,10 @@ struct viewplane_s
 
 enum
 {
-	VPLANE_LEFT,
 	VPLANE_TOP,
+	VPLANE_BOTTOM,
+	VPLANE_LEFT,
 	VPLANE_RIGHT,
-	VPLANE_BOTTOM
 };
 
 struct r_vars_s
@@ -60,15 +60,6 @@ extern void
 CameraThrust (float left, float up, float forward);
 
 extern void
-ClearScreen (void);
-
-extern void
 DrawWorld (void);
-
-extern void
-DrawPalette (void);
-
-extern void
-DrawLine (int x1, int y1, int x2, int y2, int c);
 
 #endif /* __RENDER_H__ */
