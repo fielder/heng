@@ -3,13 +3,91 @@
 #include <stdlib.h>
 
 #include "bswap.h"
-#include "render.h"
 #include "vec.h"
-//#include "r_defs.h"
+#include "render.h"
 #include "r_span.h"
+#include "r_edge.h"
 #include "r_misc.h"
 
+static void
+CameraChanged (void);
+
 struct r_vars_s r_vars;
+
+
+void
+Setup (uint8_t *buf, int w, int h, int pitch, float fov_x)
+{
+	SwapInit ();
+
+	/* screen buffer */
+	r_vars.screen = buf;
+	r_vars.w = w;
+	r_vars.h = h;
+	r_vars.pitch = pitch;
+
+	/* camera */
+	r_vars.center_x = r_vars.w / 2.0 + 0.5;
+	r_vars.center_y = r_vars.h / 2.0 + 0.5;
+
+	r_vars.fov_x = fov_x;
+	r_vars.dist = (r_vars.w / 2.0) / tan(r_vars.fov_x / 2.0);
+	r_vars.fov_y = 2.0 * atan((r_vars.h / 2.0) / r_vars.dist);
+
+	Vec_Clear (r_vars.pos);
+	Vec_Clear (r_vars.angles);
+
+	CameraChanged ();
+
+	R_SpanSetup ();
+	R_EdgeSetup ();
+
+	r_vars.framenum = 0;
+}
+
+
+void
+CameraRotatePixels (float screen_dx, float screen_dy)
+{
+	/* using right-handed coordinate system, so positive yaw goes
+	 * left across the screen and positive roll goes down */
+	r_vars.angles[YAW] += r_vars.fov_x * (-screen_dx / r_vars.w);
+	r_vars.angles[PITCH] += r_vars.fov_y * (screen_dy / r_vars.h);
+
+	/* restrict camera angles */
+	if (r_vars.angles[PITCH] > M_PI / 2.0)
+		r_vars.angles[PITCH] = M_PI / 2.0;
+	if (r_vars.angles[PITCH] < -M_PI / 2.0)
+		r_vars.angles[PITCH] = -M_PI / 2.0;
+
+	while (r_vars.angles[YAW] >= M_PI * 2.0)
+		r_vars.angles[YAW] -= M_PI * 2.0;
+	while (r_vars.angles[YAW] < 0.0)
+		r_vars.angles[YAW] += M_PI * 2.0;
+
+	CameraChanged ();
+}
+
+
+void
+CameraThrust (float left, float up, float forward)
+{
+	float v[3];
+
+	Vec_Copy (r_vars.left, v);
+	Vec_Scale (v, left);
+	Vec_Add (r_vars.pos, v, r_vars.pos);
+
+	Vec_Copy (r_vars.up, v);
+	Vec_Scale (v, up);
+	Vec_Add (r_vars.pos, v, r_vars.pos);
+
+	Vec_Copy (r_vars.forward, v);
+	Vec_Scale (v, forward);
+	Vec_Add (r_vars.pos, v, r_vars.pos);
+
+	CameraChanged ();
+}
 
 
 static void
@@ -76,94 +154,7 @@ CameraChanged (void)
 }
 
 
-void
-Setup (uint8_t *buf, int w, int h, int pitch, float fov_x)
-{
-	SwapInit ();
-
-	/* screen buffer */
-	r_vars.screen = buf;
-	r_vars.w = w;
-	r_vars.h = h;
-	r_vars.pitch = pitch;
-
-	/* camera */
-	r_vars.center_x = r_vars.w / 2.0 - 0.5;
-	r_vars.center_y = r_vars.h / 2.0 - 0.5;
-
-	r_vars.fov_x = fov_x;
-	r_vars.dist = (r_vars.w / 2.0) / tan(r_vars.fov_x / 2.0);
-	r_vars.fov_y = 2.0 * atan((r_vars.h / 2.0) / r_vars.dist);
-
-	Vec_Clear (r_vars.pos);
-	Vec_Clear (r_vars.angles);
-
-	CameraChanged ();
-
-	R_SpanSetup ();
-}
-
-
-void
-CameraRotatePixels (float screen_dx, float screen_dy)
-{
-	/* using right-handed coordinate system, so positive yaw goes
-	 * left across the screen and positive roll goes down */
-	r_vars.angles[YAW] += r_vars.fov_x * (-screen_dx / r_vars.w);
-	r_vars.angles[PITCH] += r_vars.fov_y * (screen_dy / r_vars.h);
-
-	/* restrict camera angles */
-	if (r_vars.angles[PITCH] > M_PI / 2.0)
-		r_vars.angles[PITCH] = M_PI / 2.0;
-	if (r_vars.angles[PITCH] < -M_PI / 2.0)
-		r_vars.angles[PITCH] = -M_PI / 2.0;
-
-	while (r_vars.angles[YAW] >= M_PI * 2.0)
-		r_vars.angles[YAW] -= M_PI * 2.0;
-	while (r_vars.angles[YAW] < 0.0)
-		r_vars.angles[YAW] += M_PI * 2.0;
-
-	CameraChanged ();
-}
-
-
-void
-CameraThrust (float left, float up, float forward)
-{
-	float v[3];
-
-	Vec_Copy (r_vars.left, v);
-	Vec_Scale (v, left);
-	Vec_Add (r_vars.pos, v, r_vars.pos);
-
-	Vec_Copy (r_vars.up, v);
-	Vec_Scale (v, up);
-	Vec_Add (r_vars.pos, v, r_vars.pos);
-
-	Vec_Copy (r_vars.forward, v);
-	Vec_Scale (v, forward);
-	Vec_Add (r_vars.pos, v, r_vars.pos);
-
-	CameraChanged ();
-}
-
-
 #if 1
-
-static int
-_ClipPoint (float p[3])
-{
-	int i;
-	struct viewplane_s *plane;
-
-	for (i = 0, plane = r_vars.vplanes; i < 4; i++, plane++)
-	{
-		if (Vec_Dot(plane->normal, p) - plane->dist < 0)
-			return 0;
-	}
-
-	return 1;
-}
 
 static inline int
 _ProjectPoint (const float p[3], int *u, int *v)
@@ -182,20 +173,6 @@ _ProjectPoint (const float p[3], int *u, int *v)
 	return 1;
 }
 
-static void
-DrawPoint3D (float p[3], int c)
-{
-	if (_ClipPoint(p))
-	{
-		int u, v;
-
-		if (_ProjectPoint(p, &u, &v))
-		{
-			if (u >= 0 && u < r_vars.w && v >= 0 && v < r_vars.h)
-				r_vars.screen[v * r_vars.pitch + u] = c;
-		}
-	}
-}
 
 static int
 ClipLine3D (const float normal[3], float dist, float verts[2][3], float out[2][3])
@@ -238,6 +215,7 @@ ClipLine3D (const float normal[3], float dist, float verts[2][3], float out[2][3
 	return 1;
 }
 
+
 static void
 DrawLine3D (const float p1[3], const float p2[3], int c)
 {
@@ -264,41 +242,7 @@ DrawLine3D (const float p1[3], const float p2[3], int c)
 	}
 }
 
-/*
-static void
-DrawMapLine2D (const struct line2d_s *l, int c)
-{
-	float a[3], b[3];
-
-	a[0] = l->v[0]->xy[0];
-	a[1] = 0.0;
-	a[2] = l->v[0]->xy[1];
-	b[0] = l->v[1]->xy[0];
-	b[1] = 0.0;
-	b[2] = l->v[1]->xy[1];
-
-	DrawLine3D (a, b, c);
-}
-*/
-
 #endif
-
-
-uint8_t *p_pixels = NULL;
-int p_w, p_h;
-float p_verts[4][3] = {
-	{0, 72, 0},
-	{0, 0, 0},
-	{128, 0, 0},
-	{128, 72, 0},
-};
-void
-SetTexture (void *buf, int w, int h)
-{
-	p_pixels = buf;
-	p_w = w;
-	p_h = h;
-}
 
 
 static void
@@ -336,39 +280,32 @@ DrawGrid (SZ, COLOR)
 }
 
 
+static float p_verts[4][3] = {
+	{0, 72, 0},
+	{0, 0, 0},
+	{128, 0, 0},
+	{128, 72, 0},
+};
+
+
 void
 DrawWorld (void)
 {
+	char spanbuf[0x10000];
+	char edgebuf[0x10000];
 	int i, ni;
-	char spanbuf[0x20000];
-//	float xyz[3];
+
+	r_vars.framenum++;
+
+	r_vars.vplanes[0].next = &r_vars.vplanes[1];
+	r_vars.vplanes[1].next = &r_vars.vplanes[2];
+	r_vars.vplanes[2].next = &r_vars.vplanes[3];
+	r_vars.vplanes[3].next = NULL;
 
 	R_BeginSpanFrame (spanbuf, sizeof(spanbuf));
+	R_BeginEdgeFrame (edgebuf, sizeof(edgebuf));
 
 	DrawGrid (1024, 16 * 7 - 2);
-
-//	DrawPixmap (p_pixels, p_w, p_h, 4, 4);
-	/*
-	for (i = 0; i < map.num_lines_2d; i++)
-		DrawMapLine2D (map.lines_2d + i, 16 * 10 + 7);
-		*/
-
-	/*
-	for (i = 0; i < map.num_verts; i++)
-		DrawPoint3D (map.verts[i].xyz, 4);
-	*/
-//	for (i = 0; i < map.num_edges; i++)
-//		DrawLine3D (map.verts[map.edges[i].v[0]].xyz, map.verts[map.edges[i].v[1]].xyz, 4);
-
-	/*
-	for (i = 0; i < map.num_verts_2d; i++)
-	{
-		xyz[0] = map.verts_2d[i].xy[0];
-		xyz[1] = 0.0;
-		xyz[2] = map.verts_2d[i].xy[1];
-		DrawPoint3D (xyz, 4);
-	}
-	*/
 
 	for (i = 0; i < sizeof(p_verts) / sizeof(p_verts[0]); i++)
 	{
@@ -376,5 +313,5 @@ DrawWorld (void)
 		DrawLine3D (p_verts[i], p_verts[ni], 16 * 7);
 	}
 
-	R_DrawGSpans ();
+//	R_DrawGSpans ();
 }

@@ -1,6 +1,23 @@
 #ifndef __R_SPAN_H__
 #define __R_SPAN_H__
 
+/* fixed-point numbers are 13.19 precision */
+
+/* green span */
+struct gspan_s
+{
+	struct gspan_s *prev, *next;
+	short left, right;
+};
+
+/* emitted polygon spans */
+struct drawspan_s
+{
+	short u, v;
+	short len;
+};
+
+
 extern void
 R_SpanSetup (void);
 

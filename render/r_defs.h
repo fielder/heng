@@ -1,13 +1,12 @@
 #ifndef __R_DEFS_H__
 #define __R_DEFS_H__
 
-extern void
-DrawSprite (const void *lump, int x, int y);
+/* in-memory structures from the map file */
 
-extern void
-DrawPixmap(const void *pixels, int w, int h, int x, int y);
-
-extern void
-DrawSpriteToPixmap (const void *lump, void *out);
+struct medge_s
+{
+	unsigned short verts[2];
+	unsigned int cache;
+};
 
 #endif /* __R_DEFS_H__ */

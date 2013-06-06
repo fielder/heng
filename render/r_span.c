@@ -3,19 +3,7 @@
 #include <stdint.h>
 
 #include "render.h"
-
-struct gspan_s
-{
-	struct gspan_s *prev, *next;
-	short left, right;
-};
-
-struct drawspan_s
-{
-	short u, v;
-	short len;
-	short pad;
-};
+#include "r_span.h"
 
 static struct drawspan_s *r_spans = NULL;
 static struct drawspan_s *r_spans_end = NULL;
@@ -78,7 +66,7 @@ R_BeginSpanFrame (void *buf, int buflen)
 	uintptr_t p = (uintptr_t)buf;
 	int i;
 
-	while (p & 0x7)
+	while ((p % sizeof(struct drawspan_s)) != 0)
 	{
 		p++;
 		buflen--;
