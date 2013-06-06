@@ -16,16 +16,6 @@ struct plane_s
 
 enum
 {
-	PLANE_X,	/* normal lies on x axis */
-	PLANE_Y,	/* normal lies on y axis */
-	PLANE_Z,	/* normal lies on z axis */
-	PLANE_NEAR_X,	/* normal is closest to PLANE_X */
-	PLANE_NEAR_Y,	/* normal is closest to PLANE_Y */
-	PLANE_NEAR_Z	/* normal is closest to PLANE_Z */
-};
-
-enum
-{
 	SIDE_FRONT,
 	SIDE_BACK,
 	SIDE_CROSS
