@@ -155,6 +155,7 @@ CameraChanged (void)
 
 
 #if 1
+#include <stdio.h>
 
 static inline int
 _ProjectPoint (const float p[3], int *u, int *v)
@@ -164,11 +165,23 @@ _ProjectPoint (const float p[3], int *u, int *v)
 	Vec_Subtract (p, r_vars.pos, local);
 	Vec_Transform (r_vars.xform, local, out);
 	if (out[2] <= 0.0)
+	{
+		printf("(%g %g %g) -> (%g %g %g)\n",p[0],p[1],p[2],out[0],out[1],out[2]);
+		fflush(stdout);
 		return 0;
+	}
 
 	zi = 1.0 / out[2];
 	*u = (r_vars.w / 2.0) - r_vars.dist * zi * out[0];
 	*v = (r_vars.h / 2.0) - r_vars.dist * zi * out[1];
+	//FIXME: Sometimes we'll get a point nearly right on the eye,
+	//	allowing the zi to become fairly large (1.5 to 30 range)
+	//	and projecting off the screen.
+	//	This should never happen when drawing polys, as the
+	//	backface culling should do so on an epsilon, so an edge
+	//	will never run almost straight through the eye.
+	if (*u < 0 || *u >= r_vars.w || *v < 0 || *v >= r_vars.h)
+		return 0;
 
 	return 1;
 }
@@ -236,8 +249,10 @@ DrawLine3D (const float p1[3], const float p2[3], int c)
 
 	{
 		int u1=0, v1=0, u2=0, v2=0;
-		_ProjectPoint(verts[clipidx][0], &u1, &v1);
-		_ProjectPoint(verts[clipidx][1], &u2, &v2);
+		if (!_ProjectPoint(verts[clipidx][0], &u1, &v1))
+			return;
+		if (!_ProjectPoint(verts[clipidx][1], &u2, &v2))
+			return;
 		DrawLine (u1, v1, u2, v2, c);
 	}
 }
