@@ -1,8 +1,6 @@
 #ifndef __R_SPAN_H__
 #define __R_SPAN_H__
 
-/* fixed-point numbers are 13.19 precision */
-
 /* green span */
 struct gspan_s
 {

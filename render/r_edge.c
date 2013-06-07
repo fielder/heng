@@ -1,3 +1,4 @@
+#include <math.h>
 #include <string.h>
 #include <stdint.h>
 
@@ -69,32 +70,73 @@ R_BeginEdgeFrame (void *buf, int buflen)
 static int
 EmitEdge (const float p1[3], const float p2[3])
 {
-	struct drawedge_s *e;
-	int u1, v1, u2, v2, du;
+	struct drawedge_s *e, *sort;
 
-	//...
-	//...
-	u1 = v1 = du = u2 = v2 = 0;
+	float u1_f, v1_f;
+	int v1_i;
+
+	float u2_f, v2_f;
+	int v2_i;
+
+	float du;
+
+	float local[3], out[3];
+	float scale;
+
+	if (r_edges == r_edges_end)
+		return EDGE_MAX_REACHED;
+
+	Vec_Subtract (p1, r_vars.pos, local);
+	Vec_Transform (r_vars.xform, local, out);
+	scale = r_vars.dist / out[2];
+	u1_f = r_vars.center_x - scale * out[0];
+	v1_f = r_vars.center_y - scale * out[1];
+	v1_i = floor(v1_f);
+
+	Vec_Subtract (p2, r_vars.pos, local);
+	Vec_Transform (r_vars.xform, local, out);
+	scale = r_vars.dist / out[2];
+	u2_f = r_vars.center_x - scale * out[0];
+	v2_f = r_vars.center_y - scale * out[1];
+	v2_i = floor(v2_f);
+
 	//TODO: keep y extents on the screen, as we can get the 2 inputs as
 	//	vertical edges on the left/right vertical planes
-	//...
-	//...
+	//	sanity check that it _is_ vertical and on the left/right
+	//	that should be the only time we have to clip...
 
-	if (v1 == v2)
+	if (v1_i == v2_i)
 	{
 		/* cache horizontal edges as fully clipped, as they will
 		 * be ignore entirely */
 		return EDGE_FULLY_CLIPPED;
 	}
+	else if (v1_i < v2_i)
+	{
+		du = (u2_f - u1_f) / (v2_f - v1_f);
 
-	if (r_edges == r_edges_end)
-		return EDGE_MAX_REACHED;
+		e = r_edges++;
+		e->u = (u1_f - du * (v1_f - v1_i)) * (1 << 20);
+		e->du = (du) * (1 << 20);
+		e->top = v1_i;
+		e->bottom = v2_i - 1;
+	}
+	else
+	{
+		du = (u1_f - u2_f) / (v1_f - v2_f);
 
-	e = r_edges++;
-	e->u = u1;
-	e->v = v1;
-	e->du = du;
-	//TODO: link into v-sorted list
+		e = r_edges++;
+		e->u = (u2_f - du * (v2_f - v2_i)) * (1 << 20);
+		e->du = (du) * (1 << 20);
+		e->top = v2_i;
+		e->bottom = v1_i - 1;
+	}
+
+	/* link into v-sorted list */
+	for (sort = &r_poly_edges; sort->next != NULL and sort->next->top < e->top)
+		sort = sort->next;
+	e->next = sort->next;
+	sort->next = e;
 
 	return e - r_edges_start;
 }
@@ -190,6 +232,7 @@ R_DrawPoly (struct drawpoly_s *p, const struct viewplane_s *planes)
 
 //TODO: ensure we have at least p->num_edges free edges, return if not
 //TODO: if an edge clip returns EDGE_MAX_REACHED, return
+
 //TODO: if an edge clip returns EDGE_FULLY_CLIPPED, mark the medge_s cache high bit and set frame num
 
 //TODO: sanity check left/right clip counts

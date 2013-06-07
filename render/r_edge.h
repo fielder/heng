@@ -6,8 +6,8 @@ struct drawedge_s
 {
 	struct drawedge_s *next; /* in v-sorted list of edges for the poly */
 
-	int u, v;
-	int du; /* change in u per y pixel */
+	int top, bottom;
+	int u, du; /* 12.20 */
 	/* no need for a dv as it's always 1 pixel */
 };
 
