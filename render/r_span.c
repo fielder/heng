@@ -49,6 +49,7 @@ R_SpanSetup (void)
 void
 R_EmitSpan (int y, int x1, int x2)
 {
+	//TODO: mask proprly w/ gspans
 	if (r_spans != r_spans_end)
 	{
 		r_spans->u = x1;

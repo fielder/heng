@@ -64,13 +64,4 @@ CameraThrust (float left, float up, float forward);
 extern void
 DrawWorld (void);
 
-extern void
-DrawSprite (const void *lump, int x, int y);
-
-extern void
-DrawPixmap(const void *pixels, int w, int h, int x, int y);
-
-extern void
-DrawSpriteToPixmap (const void *lump, void *out);
-
 #endif /* __RENDER_H__ */

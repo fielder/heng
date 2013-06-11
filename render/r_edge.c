@@ -1,6 +1,8 @@
 #include <math.h>
+#include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #include "render.h"
 #include "r_edge.h"
@@ -30,8 +32,8 @@ static struct drawedge_s *r_edges_start = NULL;
 static struct drawedge_s *r_edges_end = NULL;
 static struct drawedge_s *r_edges = NULL;
 
-/* v-sorted list for the poly */
-static struct drawedge_s r_poly_edges;
+/* 2 possible edge starts per screen row */
+static struct drawedge_s **r_edge_starts = NULL;
 
 /* when the edge winding leaves the view, crossing a vertical plane,
  * and re-enters to the front side, we must create a new vertical
@@ -47,6 +49,17 @@ static float clip_enter_right[3];
 void
 R_EdgeSetup (void)
 {
+	int sz;
+
+	if (r_edge_starts != NULL)
+	{
+		free (r_edge_starts);
+		r_edge_starts = NULL;
+	}
+
+	sz = sizeof(*r_edge_starts) * r_vars.h * 2;
+	r_edge_starts = malloc (sz);
+	memset (r_edge_starts, 0, sz);
 }
 
 
@@ -70,7 +83,7 @@ R_BeginEdgeFrame (void *buf, int buflen)
 static int
 EmitEdge (const float p1[3], const float p2[3])
 {
-	struct drawedge_s *e, *sort;
+	struct drawedge_s *e;
 
 	float u1_f, v1_f;
 	int v1_i;
@@ -82,6 +95,8 @@ EmitEdge (const float p1[3], const float p2[3])
 
 	float local[3], out[3];
 	float scale;
+
+	int i;
 
 	if (r_edges == r_edges_end)
 		return EDGE_MAX_REACHED;
@@ -115,9 +130,9 @@ EmitEdge (const float p1[3], const float p2[3])
 	{
 		du = (u2_f - u1_f) / (v2_f - v1_f);
 
-		e = r_edges++;
-		e->u = (u1_f - du * (v1_f - v1_i)) * (1 << 20);
-		e->du = (du) * (1 << 20);
+		e = r_edges;
+		e->u = (u1_f - du * (v1_f - v1_i)) * 0x100000;
+		e->du = (du) * 0x100000;
 		e->top = v1_i;
 		e->bottom = v2_i - 1;
 	}
@@ -125,18 +140,30 @@ EmitEdge (const float p1[3], const float p2[3])
 	{
 		du = (u1_f - u2_f) / (v1_f - v2_f);
 
-		e = r_edges++;
-		e->u = (u2_f - du * (v2_f - v2_i)) * (1 << 20);
-		e->du = (du) * (1 << 20);
+		e = r_edges;
+		e->u = (u2_f - du * (v2_f - v2_i)) * 0x100000;
+		e->du = (du) * 0x100000;
 		e->top = v2_i;
 		e->bottom = v1_i - 1;
 	}
 
-	/* link into v-sorted list */
-	for (sort = &r_poly_edges; sort->next != NULL and sort->next->top < e->top)
-		sort = sort->next;
-	e->next = sort->next;
-	sort->next = e;
+	i = e->top >> 1;
+	if (r_edge_starts[i] == NULL)
+	{
+		r_edge_starts[i] = e;
+	}
+	else
+	{
+		i++;
+		if (r_edge_starts[i] != NULL)
+		{
+			printf ("3+ edge starts on a row\n");
+			return EDGE_FULLY_CLIPPED;
+		}
+		r_edge_starts[i] = e;
+	}
+
+	r_edges++;
 
 	return e - r_edges_start;
 }
@@ -227,8 +254,6 @@ R_DrawPoly (struct drawpoly_s *p, const struct viewplane_s *planes)
 {
 	left_clip_count = 0;
 	right_clip_count = 0;
-
-	r_poly_edges.next = NULL;
 
 //TODO: ensure we have at least p->num_edges free edges, return if not
 //TODO: if an edge clip returns EDGE_MAX_REACHED, return

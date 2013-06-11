@@ -27,8 +27,8 @@ Setup (uint8_t *buf, int w, int h, int pitch, float fov_x)
 	r_vars.pitch = pitch;
 
 	/* camera */
-	r_vars.center_x = r_vars.w / 2.0 + 0.5;
-	r_vars.center_y = r_vars.h / 2.0 + 0.5;
+	r_vars.center_x = (r_vars.w / 2.0) + 0.5;
+	r_vars.center_y = (r_vars.h / 2.0) + 0.5;
 
 	r_vars.fov_x = fov_x;
 	r_vars.dist = (r_vars.w / 2.0) / tan(r_vars.fov_x / 2.0);
@@ -37,12 +37,12 @@ Setup (uint8_t *buf, int w, int h, int pitch, float fov_x)
 	Vec_Clear (r_vars.pos);
 	Vec_Clear (r_vars.angles);
 
-	CameraChanged ();
+	r_vars.framenum = 0;
 
 	R_SpanSetup ();
 	R_EdgeSetup ();
 
-	r_vars.framenum = 0;
+	CameraChanged ();
 }
 
 
@@ -153,8 +153,9 @@ CameraChanged (void)
 	p->dist = Vec_Dot (p->normal, r_vars.pos);
 }
 
+/* ========================================================== */
+/* ========================================================== */
 
-#if 1
 #include <stdio.h>
 
 static inline int
@@ -256,8 +257,6 @@ DrawLine3D (const float p1[3], const float p2[3], int c)
 		DrawLine (u1, v1, u2, v2, c);
 	}
 }
-
-#endif
 
 
 static void
