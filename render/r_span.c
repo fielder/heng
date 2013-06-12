@@ -46,16 +46,83 @@ R_SpanSetup (void)
 }
 
 
-void
-R_EmitSpan (int y, int x1, int x2)
+static void
+R_PushSpan (short y, short x1, short x2)
 {
-	//TODO: mask proprly w/ gspans
 	if (r_spans != r_spans_end)
 	{
 		r_spans->u = x1;
 		r_spans->v = y;
 		r_spans->len = x2 - x1 + 1;
 		r_spans++;
+	}
+}
+
+
+void
+R_EmitSpan (short y, short x1, short x2)
+{
+	struct gspan_s *head = &r_gspans[y];
+	struct gspan_s *gs, *next, *new;
+
+	gs = head->next;
+	while (1)
+	{
+		if (gs == head)
+			break;
+		else if (gs->right < x1)
+			gs = gs->next;
+		else if (gs->left > x2)
+			break;
+		else if (gs->left < x1)
+		{
+			/* the gspan hangs off the left of the span,
+			 * split the gspan */
+
+			if (r_gspans_pool == NULL)
+				return;
+
+			new = r_gspans_pool;
+			r_gspans_pool = r_gspans_pool->next;
+			new->left = x1;
+			new->right = gs->right;
+			gs->right = x1 - 1;
+			new->prev = gs;
+			new->next = gs->next;
+			new->prev->next = new;
+			new->next->prev = new;
+			gs = new;
+		}
+		else if (gs->right <= x2)
+		{
+			/* the gspan lies entirely within the span,
+			 * emit a drawable span */
+			R_PushSpan (y, gs->left, gs->right);
+			next = gs->next;
+			gs->prev->next = gs->next;
+			gs->next->prev = gs->prev;
+			gs->next = r_gspans_pool;
+			r_gspans_pool = gs;
+			gs = next;
+		}
+		else
+		{
+			/* the gspan hangs off the right of the span,
+			 * split the gspan */
+
+			if (r_gspans_pool == NULL)
+				return;
+
+			new = r_gspans_pool;
+			r_gspans_pool = r_gspans_pool->next;
+			new->left = x2 + 1;
+			new->right = gs->right;
+			gs->right = x2;
+			new->prev = gs;
+			new->next = gs->next;
+			new->prev->next = new;
+			new->next->prev = new;
+		}
 	}
 }
 
