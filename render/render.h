@@ -13,10 +13,10 @@ struct viewplane_s
 
 enum
 {
-	VPLANE_TOP,
-	VPLANE_BOTTOM,
 	VPLANE_LEFT,
 	VPLANE_RIGHT,
+	VPLANE_TOP,
+	VPLANE_BOTTOM,
 };
 
 struct r_vars_s

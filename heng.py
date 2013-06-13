@@ -48,23 +48,17 @@ def _cameraFly():
 def _debug():
     pass
 
+def _showViewPos():
+    hvars.c_api.PrintViewPos()
+def _setViewPos():
+    hvars.c_api.PushViewPos("test")
+def _restoreViewPos():
+    hvars.c_api.RestoreViewPos("test")
+
 def _loadMap(path):
     w = wad.Wad(path)
 
-    raw = w.readLump("VERTS_2D")
-    hvars.c_api.LoadVertexes_2D(raw, len(raw))
-
-    raw = w.readLump("LINES_2D")
-    hvars.c_api.LoadLines_2D(raw, len(raw))
-
-    raw = w.readLump("LEAFS_2D")
-    hvars.c_api.LoadLeafs_2D(raw, len(raw))
-
-    raw = w.readLump("VERTEXES")
-    hvars.c_api.LoadVertexes(raw, len(raw))
-
-    raw = w.readLump("EDGES")
-    hvars.c_api.LoadEdges(raw, len(raw))
+    #...
 
     w.close()
     print "Loaded \"%s\"" % path
@@ -92,6 +86,9 @@ if __name__ == "__main__":
     io.bind("mousemove", _mouseMove)
     io.bind("g", io.toggleGrab)
     io.bind("x", _debug)
+    io.bind("8", _showViewPos)
+    io.bind("9", _setViewPos)
+    io.bind("0", _restoreViewPos)
     io.bindContinuous("period", _moveForward)
     io.bindContinuous("u", _moveRight)
     io.bindContinuous("e", _moveBack)

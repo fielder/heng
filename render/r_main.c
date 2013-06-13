@@ -27,8 +27,8 @@ Setup (uint8_t *buf, int w, int h, int pitch, float fov_x)
 	r_vars.pitch = pitch;
 
 	/* camera */
-	r_vars.center_x = (r_vars.w / 2.0) + 0.5;
-	r_vars.center_y = (r_vars.h / 2.0) + 0.5;
+	r_vars.center_x = r_vars.w / 2.0;
+	r_vars.center_y = r_vars.h / 2.0;
 
 	r_vars.fov_x = fov_x;
 	r_vars.dist = (r_vars.w / 2.0) / tan(r_vars.fov_x / 2.0);
@@ -300,7 +300,15 @@ static float p_verts[4][3] = {
 	{128, 0, 0},
 	{128, 72, 0},
 };
+static float p_verts2[4][3] = {
+	{0, 72, 60},
+	{0, 0, 60},
+	{128, 0, 60},
+	{128, 72, 60},
+};
 
+extern void
+R_DrawPoly (const struct viewplane_s *planes);
 
 void
 DrawWorld (void)
@@ -321,10 +329,13 @@ DrawWorld (void)
 
 	DrawGrid (1024, 16 * 7 - 2);
 
+	R_DrawPoly (&r_vars.vplanes[0]);
+
 	for (i = 0; i < sizeof(p_verts) / sizeof(p_verts[0]); i++)
 	{
 		ni = (i + 1) % (sizeof(p_verts) / sizeof(p_verts[0]));
-		DrawLine3D (p_verts[i], p_verts[ni], 16 * 7);
+		DrawLine3D (p_verts[i], p_verts[ni], 16 * 7 + 8);
+		DrawLine3D (p_verts2[i], p_verts2[ni], 16 * 7 + 8);
 	}
 
 //	R_DrawGSpans ();

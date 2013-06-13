@@ -9,7 +9,7 @@ static struct drawspan_s *r_spans = NULL;
 static struct drawspan_s *r_spans_end = NULL;
 
 struct gspan_s *r_gspans = NULL;
-struct gspan_s *r_gspans_pool = NULL;
+static struct gspan_s *r_gspans_pool = NULL;
 
 
 void

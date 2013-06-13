@@ -1,7 +1,11 @@
+#include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdlib.h>
 
+#include "cdefs.h"
 #include "render.h"
+#include "vec.h"
 #include "r_misc.h"
 
 
@@ -107,4 +111,69 @@ DrawLine (int x1, int y1, int x2, int y2, int c)
 			d += ax;
 		}
 	}
+}
+
+
+static struct viewpos_s vpos_head;
+
+
+void
+PrintViewPos (void)
+{
+	struct viewpos_s *v;
+
+	for (v = vpos_head.next; v != NULL; v = v->next)
+	{
+		printf ("%s (%g %g %g) (%g %g %g)\n",
+			v->name,
+			v->pos[0], v->pos[1], v->pos[2],
+			v->angles[0], v->angles[1], v->angles[2] );
+	}
+}
+
+
+static struct viewpos_s *
+FindViewPos (const char *name)
+{
+	struct viewpos_s *v;
+
+	for (v = vpos_head.next; v != NULL && v->name != name; v = v->next) {}
+
+	return v;
+}
+
+
+void
+RestoreViewPos (const char *name)
+{
+	struct viewpos_s *v;
+
+	if ((v = FindViewPos(name)) != NULL)
+	{
+		Vec_Copy (v->pos, r_vars.pos);
+		Vec_Copy (v->angles, r_vars.angles);
+	}
+}
+
+
+void
+PushViewPos (const char *name)
+{
+	struct viewpos_s *tail, *v;
+
+	if ((v = FindViewPos(name)) != NULL)
+	{
+		Vec_Copy (r_vars.pos, v->pos);
+		Vec_Copy (r_vars.angles, v->angles);
+		return;
+	}
+
+	v = malloc (sizeof(*v));
+	Vec_Copy (r_vars.pos, v->pos);
+	Vec_Copy (r_vars.angles, v->angles);
+	v->name = name;
+	v->next = NULL;
+
+	for (tail = &vpos_head; tail->next != NULL; tail = tail->next) {}
+	tail->next = v;
 }

@@ -46,7 +46,7 @@ def refresh():
     if not p_tex:
         name = "TOMW2_1"
         p_tex = r_pic.getPixmap(name)
-        hvars.c_api.SetTexture(p_tex.pixels, p_tex.w, p_tex.h)
+#       hvars.c_api.SetTexture(p_tex.pixels, p_tex.w, p_tex.h)
         print name, p_tex.w, p_tex.h
 
     hvars.c_api.ClearScreen()
