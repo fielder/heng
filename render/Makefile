@@ -8,10 +8,10 @@ TARGET = $(OBJDIR)/render.so
 OBJS =	$(OBJDIR)/bswap.o \
 	$(OBJDIR)/vec.o \
 	$(OBJDIR)/r_main.o \
-	$(OBJDIR)/r_misc.o \
-	$(OBJDIR)/r_sprite.o \
-	$(OBJDIR)/r_span.o \
-	$(OBJDIR)/r_edge.o
+	$(OBJDIR)/r_misc.o
+#	$(OBJDIR)/r_sprite.o \
+#	$(OBJDIR)/r_span.o \
+#	$(OBJDIR)/r_edge.o
 
 all: $(TARGET)
 

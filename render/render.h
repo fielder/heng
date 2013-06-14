@@ -25,6 +25,8 @@ struct r_vars_s
 	int w, h, pitch;
 	uint8_t *screen;
 
+	int framenum;
+
 	/* camera defs */
 	float center_x;
 	float center_y;
@@ -45,21 +47,19 @@ struct r_vars_s
 	float forward[3];
 
 	struct viewplane_s vplanes[4];
-
-	int framenum;
 };
 
 extern struct r_vars_s r_vars;
 
 
 extern void
-Setup (uint8_t *buf, int w, int h, int pitch, float fov_x);
+SetupBuffer (uint8_t *buf, int w, int h, int pitch);
 
 extern void
-CameraRotatePixels (float screen_dx, float screen_dy);
+SetupProjection (float fov_x);
 
 extern void
-CameraThrust (float left, float up, float forward);
+SetCamera (float pos[3], float angles[3]);
 
 extern void
 DrawWorld (void);

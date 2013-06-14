@@ -6,60 +6,27 @@ import ctypes
 import hvars
 import io
 import r_main
-import console
+import r_cam
+#import console
 from utils import wad
 
 
 def _quit():
     hvars.do_quit = 1
 
+
 def _showFPS():
     print "%g fps" % hvars.fps_rate
 
-def _mouseMove(delt):
-    hvars.c_api.CameraRotatePixels(ctypes.c_float(delt[0]), ctypes.c_float(delt[1]))
-
-_frame_move = { "left": 0.0, "forward": 0.0, "up": 0.0 }
-
-def _moveForward():
-    _frame_move["forward"] += 1.0
-
-def _moveRight():
-    _frame_move["left"] -= 1.0
-
-def _moveUp():
-    _frame_move["up"] += 1.0
-
-def _moveBack():
-    _frame_move["forward"] -= 1.0
-
-def _moveLeft():
-    _frame_move["left"] += 1.0
-
-def _moveDown():
-    _frame_move["up"] -= 1.0
-
-def _cameraFly():
-    left = ctypes.c_float(_frame_move["left"] * hvars.frametime * hvars.movespeed)
-    up = ctypes.c_float(_frame_move["up"] * hvars.frametime * hvars.movespeed)
-    fwd = ctypes.c_float(_frame_move["forward"] * hvars.frametime * hvars.movespeed)
-    hvars.c_api.CameraThrust(left, up, fwd)
 
 def _debug():
     pass
 
-def _showViewPos():
-    hvars.c_api.PrintViewPos()
-def _setViewPos():
-    hvars.c_api.PushViewPos("test")
-def _restoreViewPos():
-    hvars.c_api.RestoreViewPos("test")
 
 def _loadMap(path):
+    return
     w = wad.Wad(path)
-
     #...
-
     w.close()
     print "Loaded \"%s\"" % path
 
@@ -73,38 +40,30 @@ if __name__ == "__main__":
 
     io.init()
     r_main.init()
+    r_cam.init()
 
-#   _loadMap(sys.argv[2])
+    _loadMap(sys.argv[2])
 
-    console.write("test line 1\n")
-    console.write("test line 2\n")
+#   console.write("test line 1\n")
+#   console.write("test line 2\n")
 #   console.write("two lines\npart of the 2nd\n")
 
-    io.bind("backquote", console.toggle)
+#   io.bind("backquote", console.toggle)
     io.bind("escape", _quit)
     io.bind("f", _showFPS)
-    io.bind("mousemove", _mouseMove)
     io.bind("g", io.toggleGrab)
     io.bind("x", _debug)
-    io.bind("8", _showViewPos)
-    io.bind("9", _setViewPos)
-    io.bind("0", _restoreViewPos)
-    io.bindContinuous("period", _moveForward)
-    io.bindContinuous("u", _moveRight)
-    io.bindContinuous("e", _moveBack)
-    io.bindContinuous("o", _moveLeft)
-    io.bindContinuous("button3", _moveUp)
 
     frame_start = io.milliSeconds()
     while not hvars.do_quit:
-        for direction in _frame_move.keys():
-            _frame_move[direction] = 0.0
+        r_cam.beginFrame()
 
         io.runInput()
 
-        _cameraFly()
+        r_cam.update()
 
         r_main.refresh()
+
         io.swapBuffer()
 
         now = io.milliSeconds()

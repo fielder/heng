@@ -95,6 +95,9 @@ DrawPixmap(const void *pixels, int w, int h, int x, int y)
 	if (x + draw_w > r_vars.w)
 		draw_w = r_vars.w - x;
 
+	if (draw_w <= 0)
+		return;
+
 	/* clip top */
 	if (y < 0)
 	{
@@ -107,7 +110,7 @@ DrawPixmap(const void *pixels, int w, int h, int x, int y)
 	if (y + h > r_vars.h)
 		h = r_vars.h - y;
 
-	if (draw_w <= 0 || h <= 0)
+	if (h <= 0)
 		return;
 
 	dest = r_vars.screen + y * r_vars.pitch + x;

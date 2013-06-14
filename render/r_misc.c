@@ -1,11 +1,9 @@
-#include <stdio.h>
 #include <stdint.h>
 #include <string.h>
-#include <stdlib.h>
 
 #include "cdefs.h"
-#include "render.h"
 #include "vec.h"
+#include "render.h"
 #include "r_misc.h"
 
 
@@ -114,66 +112,139 @@ DrawLine (int x1, int y1, int x2, int y2, int c)
 }
 
 
-static struct viewpos_s vpos_head;
-
-
-void
-PrintViewPos (void)
+static int
+ProjectPoint (const float p[3], int *u, int *v)
 {
-	struct viewpos_s *v;
+	float local[3], out[3], zi;
 
-	for (v = vpos_head.next; v != NULL; v = v->next)
+	Vec_Subtract (p, r_vars.pos, local);
+	Vec_Transform (r_vars.xform, local, out);
+	if (out[2] <= 0.0)
 	{
-		printf ("%s (%g %g %g) (%g %g %g)\n",
-			v->name,
-			v->pos[0], v->pos[1], v->pos[2],
-			v->angles[0], v->angles[1], v->angles[2] );
+		/*
+		printf("(%g %g %g) -> (%g %g %g)\n",p[0],p[1],p[2],out[0],out[1],out[2]);
+		fflush(stdout);
+		*/
+		return 0;
+	}
+
+	zi = 1.0 / out[2];
+	*u = (r_vars.w / 2.0) - r_vars.dist * zi * out[0];
+	*v = (r_vars.h / 2.0) - r_vars.dist * zi * out[1];
+	//FIXME: Sometimes we'll get a point nearly right on the eye,
+	//	allowing the zi to become fairly large (1.5 to 30 range)
+	//	and projecting off the screen.
+	//	This should never happen when drawing polys, as the
+	//	backface culling should do so on an epsilon, so an edge
+	//	will never run almost straight through the eye.
+	if (*u < 0 || *u >= r_vars.w || *v < 0 || *v >= r_vars.h)
+		return 0;
+
+	return 1;
+}
+
+
+static int
+ClipLine3D (const float normal[3], float dist, float verts[2][3], float out[2][3])
+{
+	float d1, d2, frac;
+
+	d1 = Vec_Dot(verts[0], normal) - dist;
+	d2 = Vec_Dot(verts[1], normal) - dist;
+
+	if (d1 < PLANE_DIST_EPSILON && d2 < PLANE_DIST_EPSILON)
+	{
+		return 0;
+	}
+	else if (d1 >= PLANE_DIST_EPSILON && d2 >= PLANE_DIST_EPSILON)
+	{
+		Vec_Copy (verts[0], out[0]);
+		Vec_Copy (verts[1], out[1]);
+	}
+	else if (d1 < 0.0)
+	{
+		frac = d1 / (d1 - d2);
+		out[0][0] = verts[0][0] + frac * (verts[1][0] - verts[0][0]);
+		out[0][1] = verts[0][1] + frac * (verts[1][1] - verts[0][1]);
+		out[0][2] = verts[0][2] + frac * (verts[1][2] - verts[0][2]);
+		out[1][0] = verts[1][0];
+		out[1][1] = verts[1][1];
+		out[1][2] = verts[1][2];
+	}
+	else
+	{
+		frac = d2 / (d2 - d1);
+		out[0][0] = verts[1][0] + frac * (verts[0][0] - verts[1][0]);
+		out[0][1] = verts[1][1] + frac * (verts[0][1] - verts[1][1]);
+		out[0][2] = verts[1][2] + frac * (verts[0][2] - verts[1][2]);
+		out[1][0] = verts[0][0];
+		out[1][1] = verts[0][1];
+		out[1][2] = verts[0][2];
+	}
+
+	return 1;
+}
+
+
+static void
+DrawLine3D (const float p1[3], const float p2[3], int c)
+{
+	float verts[2][2][3];
+	int clipidx = 0;
+	int i;
+	struct viewplane_s *vp;
+
+	Vec_Copy (p1, verts[clipidx][0]);
+	Vec_Copy (p2, verts[clipidx][1]);
+
+	for (i = 0, vp = &r_vars.vplanes[0]; i < 4; i++, vp++)
+	{
+		if (!ClipLine3D(vp->normal, vp->dist, verts[clipidx], verts[!clipidx]))
+			return;
+		clipidx ^= 1;
+	}
+
+	{
+		int u1=0, v1=0, u2=0, v2=0;
+		if (!ProjectPoint(verts[clipidx][0], &u1, &v1))
+			return;
+		if (!ProjectPoint(verts[clipidx][1], &u2, &v2))
+			return;
+		DrawLine (u1, v1, u2, v2, c);
 	}
 }
 
 
-static struct viewpos_s *
-FindViewPos (const char *name)
-{
-	struct viewpos_s *v;
-
-	for (v = vpos_head.next; v != NULL && v->name != name; v = v->next) {}
-
-	return v;
-}
-
-
 void
-RestoreViewPos (const char *name)
+DrawGrid (int size, int color)
 {
-	struct viewpos_s *v;
+	int i;
+	float a[3], b[3];
 
-	if ((v = FindViewPos(name)) != NULL)
+	for (i = 0; i <= size; i += 64)
 	{
-		Vec_Copy (v->pos, r_vars.pos);
-		Vec_Copy (v->angles, r_vars.angles);
+		/* X-Z plane */
+		a[0] = i; a[1] = 0; a[2] = 0;
+		b[0] = i; b[1] = 0; b[2] = size;
+		DrawLine3D (a, b, color);
+		a[0] = 0; a[1] = 0; a[2] = i;
+		b[0] = size; b[1] = 0; b[2] = i;
+		DrawLine3D (a, b, color);
+
+		/* X-Y plane */
+		a[0] = i; a[1] = 0; a[2] = 0;
+		b[0] = i; b[1] = size; b[2] = 0;
+		DrawLine3D (a, b, color - 4);
+		a[0] = 0; a[1] = i; a[2] = 0;
+		b[0] = size; b[1] = i; b[2] = 0;
+		DrawLine3D (a, b, color - 4);
+
+		/* Z-Y plane */
+		a[0] = 0; a[1] = 0; a[2] = i;
+		b[0] = 0; b[1] = size; b[2] = i;
+		DrawLine3D (a, b, color - 8);
+		a[0] = 0; a[1] = i; a[2] = 0;
+		b[0] = 0; b[1] = i; b[2] = size;
+		DrawLine3D (a, b, color - 4);
 	}
-}
-
-
-void
-PushViewPos (const char *name)
-{
-	struct viewpos_s *tail, *v;
-
-	if ((v = FindViewPos(name)) != NULL)
-	{
-		Vec_Copy (r_vars.pos, v->pos);
-		Vec_Copy (r_vars.angles, v->angles);
-		return;
-	}
-
-	v = malloc (sizeof(*v));
-	Vec_Copy (r_vars.pos, v->pos);
-	Vec_Copy (r_vars.angles, v->angles);
-	v->name = name;
-	v->next = NULL;
-
-	for (tail = &vpos_head; tail->next != NULL; tail = tail->next) {}
-	tail->next = v;
 }

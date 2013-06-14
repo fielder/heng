@@ -3,9 +3,18 @@ RENDER_SO = "./render.so"
 WIDTH = 320
 HEIGHT = 240
 
-movespeed = 32.0
+# camera stuff
+PITCH = 0
+YAW   = 1
+ROLL  = 2
 
-fov = 90.0
+fov_x = 0.0 # radians
+fov_y = 0.0 # radians
+pos = None
+angles = None # radians
+left = None
+up = None
+forward = None
 
 # draw buffer used by C renderer
 screen = None
