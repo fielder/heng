@@ -149,6 +149,55 @@ def splitPoly(verts, normal, dist):
 
     return (frontv, backv)
 
+def identityMatrix():
+    return ((1.0, 0.0, 0.0),
+            (0.0, 1.0, 0.0),
+            (0.0, 0.0, 1.0))
+
+def multiplyMatrix(a, b):
+    c_0_0 = a[0][0] * b[0][0] + a[0][1] * b[1][0] + a[0][2] * b[2][0]
+    c_0_1 = a[0][0] * b[0][1] + a[0][1] * b[1][1] + a[0][2] * b[2][1]
+    c_0_2 = a[0][0] * b[0][2] + a[0][1] * b[1][2] + a[0][2] * b[2][2]
+
+    c_1_0 = a[1][0] * b[0][0] + a[1][1] * b[1][0] + a[1][2] * b[2][0]
+    c_1_1 = a[1][0] * b[0][1] + a[1][1] * b[1][1] + a[1][2] * b[2][1]
+    c_1_2 = a[1][0] * b[0][2] + a[1][1] * b[1][2] + a[1][2] * b[2][2]
+
+    c_2_0 = a[2][0] * b[0][0] + a[2][1] * b[1][0] + a[2][2] * b[2][0]
+    c_2_1 = a[2][0] * b[0][1] + a[2][1] * b[1][1] + a[2][2] * b[2][1]
+    c_2_2 = a[2][0] * b[0][2] + a[2][1] * b[1][2] + a[2][2] * b[2][2]
+
+    return ((c_0_0, c_0_1, c_0_2),
+            (c_1_0, c_1_1, c_1_2),
+            (c_2_0, c_2_1, c_2_2))
+
+def anglesMatrix(angles, order="xyz"):
+    c = math.cos(angles[0])
+    s = math.sin(angles[0])
+    x = ((1.0, 0.0, 0.0),
+         (0.0,   c,  -s),
+         (0.0,   s,   c))
+
+    c = math.cos(angles[1])
+    s = math.sin(angles[1])
+    y = ((  c, 0.0,   s),
+         (0.0, 1.0, 0.0),
+         ( -s, 0.0,   c))
+
+    c = math.cos(angles[2])
+    s = math.sin(angles[2])
+    z = ((  c,  -s, 0.0),
+         (  s,   c, 0.0),
+         (0.0, 0.0, 1.0))
+
+    map_ = {"x": x, "y": y, "z": z}
+    order = order.lower()
+
+    tmp = multiplyMatrix(map_[order[0]], map_[order[1]])
+    ret = multiplyMatrix(tmp, map_[order[2]])
+
+    return ret
+
 
 class Vec3(object):
     """
