@@ -29,7 +29,7 @@ def init():
     _calcViewVecs()
 
     io.bind("mousemove", _mouseMove)
-    io.bindContinuous("period", _moveForward)
+    io.bindContinuous(".", _moveForward)
     io.bindContinuous("u", _moveRight)
     io.bindContinuous("e", _moveBack)
     io.bindContinuous("o", _moveLeft)
@@ -111,3 +111,21 @@ def _moveLeft():
 
 def _moveDown():
     _frame_move["up"] -= 1.0
+
+
+
+
+class ViewState(object):
+    pos = None
+    angles = None
+    name = ""
+
+_vstates = {}
+
+def setState(name, pos, angles):
+    vs = ViewState()
+    _vstates[name] = vs
+
+    vs.name = name
+    vs.pos = vec.Vec3(pos)
+    vs.angles = vec.Vec3(angles)

@@ -14,6 +14,7 @@ def write(s):
 
 def toggle():
     global up
+
     up = not up
 
 

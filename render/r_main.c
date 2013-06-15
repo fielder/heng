@@ -6,7 +6,7 @@
 #include "bswap.h"
 #include "vec.h"
 #include "render.h"
-//#include "r_span.h"
+#include "r_span.h"
 //#include "r_edge.h"
 #include "r_misc.h"
 
@@ -31,7 +31,7 @@ SetupBuffer (uint8_t *buf, int w, int h, int pitch)
 
 	r_vars.framenum = 0;
 
-//	R_SpanSetup ();
+	R_SpanSetup ();
 //	R_EdgeSetup ();
 }
 
@@ -129,6 +129,8 @@ CalcCamera (void)
 void
 DrawWorld (void)
 {
+	char spanbuf[0x8000];
+
 	if (cam_changed)
 	{
 		CalcCamera ();
@@ -142,7 +144,10 @@ DrawWorld (void)
 	r_vars.vplanes[2].next = &r_vars.vplanes[3];
 	r_vars.vplanes[3].next = NULL;
 
+	R_BeginSpanFrame (spanbuf, sizeof(spanbuf));
+
 	DrawGrid (1024, 16 * 7 - 2);
+
 	//...
 	//...
 }

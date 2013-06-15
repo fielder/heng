@@ -75,7 +75,8 @@ def milliSeconds():
 
 ########################################################################
 
-_key_names = {} # name -> int
+import keys
+
 _binds = {} # int/str -> func
 _binds_c = {} # continuous binds
 _pressed = [] # key ints, or strings for mouse buttons
@@ -83,12 +84,6 @@ _pressed = [] # key ints, or strings for mouse buttons
 # number of mouse motions to ignore right after grabbing the mouse; used
 # to avoid a huge initial mouse delta when grabbing
 _ignore_mousemove = 1
-
-# find key names by looking into the pygame module for names
-for item_name in dir(pygame):
-    if item_name.startswith("K_"):
-        _key_names[item_name[2:].lower()] = getattr(pygame, item_name)
-del(_key_names["last"]) # not a real key
 
 
 def toggleGrab():
@@ -115,9 +110,9 @@ def _xlateBindable(obj):
         elif obj == "mousemove":
             pass
         else:
-            if obj not in _key_names:
+            if obj not in keys.names:
                 raise Exception("unknown key \"%s\"" % obj)
-            obj = _key_names[obj]
+            obj = keys.names[obj]
     elif type(obj) != types.IntType:
         raise Exception("invalid bindable \"%s\"" % str(obj))
 
