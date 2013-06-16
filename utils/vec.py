@@ -13,6 +13,9 @@ PITCH = 0
 YAW   = 1
 ROLL  = 2
 
+PLANE_NORMAL_EPSILON = 0.00001
+PLANE_DIST_EPSILON = 0.01
+
 Plane = collections.namedtuple("Plane", ["normal", "dist"])
 
 
@@ -198,6 +201,12 @@ def anglesMatrix(angles, order="xyz"):
 
     return ret
 
+def planeCompare(a, b):
+    return math.fabs(a.normal[0] - b.normal[0]) < PLANE_NORMAL_EPSILON and \
+           math.fabs(a.normal[1] - b.normal[1]) < PLANE_NORMAL_EPSILON and \
+           math.fabs(a.normal[2] - b.normal[2]) < PLANE_NORMAL_EPSILON and \
+           math.fabs(a.dist - b.dist) < PLANE_DIST_EPSILON
+
 
 class Vec3(object):
     """
@@ -229,6 +238,14 @@ class Vec3(object):
 
     def __len__(self):
         return len(self._xyz)
+
+    def __eq__(self, other):
+        return self._xyz[0] == other[0] and \
+               self._xyz[1] == other[1] and \
+               self._xyz[2] == other[2]
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
     @property
     def len(self):
@@ -618,6 +635,13 @@ class Vec2(object):
 
     def __len__(self):
         return len(self._xy)
+
+    def __eq__(self, other):
+        return self._xyz[0] == other[0] and \
+               self._xyz[1] == other[1]
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
     @property
     def len(self):
