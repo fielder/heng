@@ -1,7 +1,7 @@
 import math
 import ctypes
 
-import io
+import hio
 import hvars
 from utils import vec
 
@@ -28,12 +28,12 @@ def init():
 
     _calcViewVecs()
 
-    io.bind("mousemove", _mouseMove)
-    io.bindContinuous(".", _moveForward)
-    io.bindContinuous("u", _moveRight)
-    io.bindContinuous("e", _moveBack)
-    io.bindContinuous("o", _moveLeft)
-    io.bindContinuous("button3", _moveUp)
+    hio.bind("mousemove", _mouseMove)
+    hio.bindContinuous(".", _moveForward)
+    hio.bindContinuous("u", _moveRight)
+    hio.bindContinuous("e", _moveBack)
+    hio.bindContinuous("o", _moveLeft)
+    hio.bindContinuous("button3", _moveUp)
 
 
 def update():

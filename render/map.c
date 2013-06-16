@@ -1,119 +1,159 @@
-#include <stdint.h>
 #include <stdlib.h>
-#include <stdio.h>
 
 #include "bswap.h"
-#include "dmap.h"
+#include "mapfile.h"
 #include "map.h"
 
 struct map_s map;
 
 
 void
-LoadVertexes (const void *buf, int buflen)
+Map_LoadVertices (const void *buf, int bufsize)
 {
-	const struct dvertex_s *dv, *dend;
-	int count = buflen / sizeof(*dv);
-	struct vertex_s *v;
+	const struct dvertex_s *dverts = buf;
+	int count = bufsize / sizeof(*dverts);
+	struct mvertex_s *mverts;
+	int i;
 
-	v = map.verts = malloc (count * sizeof(*v));
+	mverts = malloc (sizeof(*mverts) * count);
+
+	for (i = 0; i < count; i++)
+	{
+		const struct dvertex_s *in = &dverts[i];
+		struct mvertex_s *out = &mverts[i];
+
+		out->xyz[0] = LittleFloat (in->xyz[0]);
+		out->xyz[1] = LittleFloat (in->xyz[1]);
+		out->xyz[2] = LittleFloat (in->xyz[2]);
+	}
+
+	if (map.verts != NULL)
+	{
+		free (map.verts);
+		map.verts = NULL;
+	}
+	map.verts = mverts;
 	map.num_verts = count;
-
-	dv = buf;
-	dend = dv + count;
-	while (dv != dend)
-	{
-		v->xyz[0] = dv->x;
-		v->xyz[1] = dv->y;
-		v->xyz[2] = dv->z;
-		v++;
-
-		dv++;
-	}
-
-	printf ("Loaded %d vertexes\n", map.num_verts);
 }
 
 
 void
-LoadEdges (const void *buf, int buflen)
+Map_LoadEdges (const void *buf, int bufsize)
 {
-	const struct dedge_s *de, *dend;
-	int count = buflen / sizeof(*de);
-	struct edge_s *e;
+	const struct dedge_s *dedges = buf;
+	int count = bufsize / sizeof(*dedges);
+	struct medge_s *medges;
+	int i;
 
-	e = map.edges = malloc (count * sizeof(*e));
+	medges = malloc (sizeof(*medges) * count);
+
+	for (i = 0; i < count; i++)
+	{
+		const struct dedge_s *in = &dedges[i];
+		struct medge_s *out = &medges[i];
+
+		out->v[0] = LittleShort (in->verts[0]);
+		out->v[1] = LittleShort (in->verts[1]);
+		out->cache_offset = 0;
+	}
+
+	if (map.edges != NULL)
+	{
+		free (map.edges);
+		map.edges = NULL;
+	}
+	map.edges = medges;
 	map.num_edges = count;
-
-	de = buf;
-	dend = de + count;
-	while (de != dend)
-	{
-		e->v[0] = de->v1;
-		e->v[1] = de->v2;
-		e++;
-
-		de++;
-	}
-
-	printf ("Loaded %d edges\n", map.num_edges);
 }
 
 
 void
-LoadVertexes_2D (const void *buf, int buflen)
+Map_LoadPlanes (const void *buf, int bufsize)
 {
-	const struct dvertex2d_s *dv, *dend;
-	int count = buflen / sizeof(*dv);
-	struct vertex2d_s *v;
+	const struct dplane_s *dplanes = buf;
+	int count = bufsize / sizeof(*dplanes);
+	struct mplane_s *mplanes;
+	int i;
 
-	v = map.verts_2d = malloc (count * sizeof(*v));
-	map.num_verts_2d = count;
+	mplanes = malloc (sizeof(*mplanes) * count);
 
-	dv = buf;
-	dend = dv + count;
-	while (dv != dend)
+	for (i = 0; i < count; i++)
 	{
-		v->xy[0] = dv->x;
-		v->xy[1] = dv->y;
-		v++;
+		const struct dplane_s *in = &dplanes[i];
+		struct mplane_s *out = &mplanes[i];
 
-		dv++;
+		out->normal[0] = LittleFloat (in->normal[0]);
+		out->normal[1] = LittleFloat (in->normal[1]);
+		out->normal[2] = LittleFloat (in->normal[2]);
+		out->dist = LittleFloat (in->dist);
+		out->signbits = LittleShort (in->signbits);
+		out->type = LittleShort (in->type);
 	}
 
-	printf ("Loaded %d 2d vertexes\n", map.num_verts_2d);
+	if (map.planes != NULL)
+	{
+		free (map.planes);
+		map.planes = NULL;
+	}
+	map.planes = mplanes;
+	map.num_planes = count;
 }
 
 
 void
-LoadLines_2D (const void *buf, int buflen)
+Map_LoadPolyEdges (const void *buf, int bufsize)
 {
-	const struct dline2d_s *dl, *dend;
-	int count = buflen / sizeof(*dl);
-	struct line2d_s *l;
+	const unsigned short *dpolyedges = buf;
+	int count = bufsize / sizeof(*dpolyedges);
+	unsigned short *mpolyedges;
+	int i;
 
-	l = map.lines_2d = malloc (count * sizeof(*l));
-	map.num_lines_2d = count;
+	mpolyedges = malloc (sizeof(*mpolyedges) * count);
 
-	dl = buf;
-	dend = dl + count;
-	while (dl != dend)
+	for (i = 0; i < count; i++)
 	{
-		l->v[0] = &map.verts_2d[dl->v1];
-		l->v[1] = &map.verts_2d[dl->v2];
-		l++;
+		const unsigned short *in = &dpolyedges[i];
+		unsigned short *out = &mpolyedges[i];
 
-		dl++;
+		*out = LittleShort (*in);
 	}
 
-	printf ("Loaded %d 2d lines\n", map.num_lines_2d);
+	if (map.polyedges != NULL)
+	{
+		free (map.polyedges);
+		map.polyedges = NULL;
+	}
+	map.polyedges = mpolyedges;
+	map.num_polyedges = count;
 }
 
 
 void
-LoadLeafs_2D (const void *buf, int buflen)
+Map_LoadPolys (const void *buf, int bufsize)
 {
+	const struct dpoly_s *dpolys = buf;
+	int count = bufsize / sizeof(*dpolys);
+	struct mpoly_s *mpolys;
+	int i;
+
+	mpolys = malloc (sizeof(*mpolys) * count);
+
+	for (i = 0; i < count; i++)
+	{
+		const struct dpoly_s *in = &dpolys[i];
+		struct mpoly_s *out = &mpolys[i];
+
+		out->plane = &map.planes[LittleShort(in->plane)];
+		out->side = LittleShort (in->side);
+		out->edges = map.polyedges + LittleShort(in->first_edge);
+		out->num_edges = LittleShort (in->num_edges);
+	}
+
+	if (map.polys != NULL)
+	{
+		free (map.polys);
+		map.polys = NULL;
+	}
+	map.polys = mpolys;
+	map.num_polys = count;
 }
-
-
-//TODO: free stuff

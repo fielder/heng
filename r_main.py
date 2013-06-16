@@ -2,7 +2,7 @@ import math
 import ctypes
 
 import hvars
-import io
+import hio
 #import r_pic
 #import console
 
@@ -44,7 +44,7 @@ def setPalette(palidx):
 
     if palidx != _cur_pal_idx:
         _cur_pal_idx = palidx
-        io.setPalette(palettes[_cur_pal_idx])
+        hio.setPalette(palettes[_cur_pal_idx])
 
 def _chopSequence(sequence, chunksize):
     idx = 0

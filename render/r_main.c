@@ -1,6 +1,5 @@
 #include <stdint.h>
 #include <math.h>
-//#include <stdlib.h>
 
 #include "cdefs.h"
 #include "bswap.h"
@@ -9,6 +8,7 @@
 #include "r_span.h"
 //#include "r_edge.h"
 #include "r_misc.h"
+#include "map.h"
 
 struct r_vars_s r_vars;
 
@@ -130,6 +130,7 @@ void
 DrawWorld (void)
 {
 	char spanbuf[0x8000];
+//	char edgebuf[0x8000];
 
 	if (cam_changed)
 	{
@@ -145,8 +146,37 @@ DrawWorld (void)
 	r_vars.vplanes[3].next = NULL;
 
 	R_BeginSpanFrame (spanbuf, sizeof(spanbuf));
+//	R_BeginEdgeFrame (edgebuf, sizeof(edgebuf));
 
 	DrawGrid (1024, 16 * 7 - 2);
+
+if (1)
+{
+	int i;
+	for (i = 0; i < map.num_polys; i++)
+	{
+		const struct mpoly_s *p = &map.polys[i];
+		int j;
+		for (j = 0; j < p->num_edges; j++)
+		{
+			int edgenum = p->edges[j] & 0x7fff;
+			const struct medge_s *edge = &map.edges[edgenum];
+		DrawLine3D (	map.verts[edge->v[0]].xyz,
+				map.verts[edge->v[1]].xyz,
+				16 * 7);
+		}
+	}
+}
+if (0)
+{
+	int i;
+	for (i = 0; i < map.num_edges; i++)
+	{
+		DrawLine3D (	map.verts[map.edges[i].v[0]].xyz,
+				map.verts[map.edges[i].v[1]].xyz,
+				16 * 7);
+	}
+}
 
 	//...
 	//...

@@ -4,9 +4,10 @@ import sys
 import ctypes
 
 import hvars
-import io
+import hio
 import r_main
 import r_cam
+import mapfile
 #import console
 from utils import wad
 
@@ -23,14 +24,6 @@ def _debug():
     pass
 
 
-def _loadMap(path):
-    return
-    w = wad.Wad(path)
-    #...
-    w.close()
-    print "Loaded \"%s\"" % path
-
-
 if __name__ == "__main__":
     if len(sys.argv) != 3:
         print "usage: %s <iwad> <map file>" % sys.argv[0]
@@ -38,38 +31,39 @@ if __name__ == "__main__":
 
     hvars.iwad = wad.Wad(sys.argv[1])
 
-    io.init()
+    hio.init()
     r_main.init()
     r_cam.init()
 
-    _loadMap(sys.argv[2])
+    # load into the C rendered
+    mapfile.load(sys.argv[2])
 
 #   console.write("test line 1\n")
 #   console.write("test line 2\n")
 #   console.write("two lines\npart of the 2nd\n")
 
-#   io.bind("backquote", console.toggle)
-    io.bind("escape", _quit)
-    io.bind("f", _showFPS)
-    io.bind("g", io.toggleGrab)
-    io.bind("x", _debug)
+#   hio.bind("backquote", console.toggle)
+    hio.bind("escape", _quit)
+    hio.bind("f", _showFPS)
+    hio.bind("g", hio.toggleGrab)
+    hio.bind("x", _debug)
 
-    frame_start = io.milliSeconds()
+    frame_start = hio.milliSeconds()
     while not hvars.do_quit:
         r_cam.beginFrame()
 
-        io.runInput()
+        hio.runInput()
 
         r_cam.update()
 
         r_main.refresh()
 
-        io.swapBuffer()
+        hio.swapBuffer()
 
-        now = io.milliSeconds()
+        now = hio.milliSeconds()
         hvars.frametime = (now - frame_start) / 1000.0
         if hvars.frametime == 0.0:
             hvars.frametime = 0.001
         frame_start = now
 
-    io.shutdown()
+    hio.shutdown()

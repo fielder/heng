@@ -9,7 +9,21 @@
 #include "r_misc.h"
 #include "vec.h"
 
-
+//FIXME: it's important to clip against the left/right planes first
+//	so to generate the enter/exit points properly, else for the
+//	case of a poly entirely surrounding the view, if we tested
+//	top/bottom first, all edges woud be clipped away leaving
+//	nothing enter/exit points and therefore nothing visible
+//	do it another way...?
+//FIXME: need to fix the filly clipped edge caching
+//	eg: If a poly isn't visible at all, and an edge that is clipped
+//	off the left/right, then fully rejected as above/below the frustum,
+//	we will cache it as entirely clipped. If a visible poly shares that
+//	edge we'll skip it when iterating over edges.
+//	Basically, we can't cache an edge as fully clipped if it is clipped
+//	by the left/right, then fully rejected off the top/bottom. A fully
+//	rejected edge must not touch the left/right planes.
+//
 //TODO: would like to associate portals w/ leaves so we can better
 // ignore some portals when choosing to draw them on nodes
 

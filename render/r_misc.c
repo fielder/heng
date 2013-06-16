@@ -186,7 +186,7 @@ ClipLine3D (const float normal[3], float dist, float verts[2][3], float out[2][3
 }
 
 
-static void
+void
 DrawLine3D (const float p1[3], const float p2[3], int c)
 {
 	float verts[2][2][3];
