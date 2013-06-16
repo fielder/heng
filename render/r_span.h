@@ -1,13 +1,7 @@
 #ifndef __R_SPAN_H__
 #define __R_SPAN_H__
 
-/* emitted polygon spans */
-struct drawspan_s
-{
-	short u, v;
-	short len;
-};
-
+#include "r_defs.h"
 
 extern void
 R_SpanSetup (void);
@@ -20,5 +14,8 @@ R_BeginSpanFrame (void *buf, int buflen);
 
 extern void
 R_DrawGSpans (void);
+
+
+extern struct drawspan_s *r_spans;
 
 #endif /* __R_SPAN_H__ */

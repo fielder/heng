@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 #include "render.h"
+#include "r_defs.h"
 #include "r_span.h"
 
 /* green span */
@@ -12,10 +13,10 @@ struct gspan_s
 	short left, right;
 };
 
-static struct drawspan_s *r_spans = NULL;
+struct drawspan_s *r_spans = NULL;
 static struct drawspan_s *r_spans_end = NULL;
 
-struct gspan_s *r_gspans = NULL;
+static struct gspan_s *r_gspans = NULL;
 static struct gspan_s *r_gspans_pool = NULL;
 
 

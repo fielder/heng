@@ -7,7 +7,7 @@
 #include "vec.h"
 
 #include "render.h"
-//#include "r_misc.h"
+#include "r_defs.h"
 #include "r_edge.h"
 
 //FIXME: it's important to clip against the left/right planes first
@@ -221,6 +221,22 @@ ClipEdge (float p1[3], float p2[3], const struct viewplane_s *planes)
 }
 
 
+struct drawedge_s *
+R_GenEdges (const unsigned short *edgerefs, int num_edges)
+{
+	//...
+	return NULL;
+}
+
+
+//void
+//R_GenEdges (struct mpoly_s *poly)
+//{
+//}
+
+
+#if 0
+
 static int
 EmitCachedEdge (const struct drawedge_s *e)
 {
@@ -243,15 +259,6 @@ DrawEdge (struct drawedge_s *e)
 		u += e->du;
 	}
 }
-
-
-#include "r_misc.h"
-static float p_verts[4][3] = {
-	{0, 72, 64},
-	{0, 0, 64},
-	{128, 0, 64},
-	{128, 72, 64},
-};
 
 void
 R_DrawPoly (const struct viewplane_s *planes)
@@ -290,3 +297,5 @@ R_DrawPoly (const struct viewplane_s *planes)
 //TODO: sanity check left/right clip counts
 //TODO: after all edges are emitted, emit left & right if clipped off the sides there
 }
+
+#endif

@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "bswap.h"
 #include "mapfile.h"
@@ -34,6 +35,8 @@ Map_LoadVertices (const void *buf, int bufsize)
 	}
 	map.verts = mverts;
 	map.num_verts = count;
+
+	printf ("%d vertices\n", map.num_verts);
 }
 
 
@@ -64,6 +67,8 @@ Map_LoadEdges (const void *buf, int bufsize)
 	}
 	map.edges = medges;
 	map.num_edges = count;
+
+	printf ("%d edges\n", map.num_edges);
 }
 
 
@@ -97,6 +102,8 @@ Map_LoadPlanes (const void *buf, int bufsize)
 	}
 	map.planes = mplanes;
 	map.num_planes = count;
+
+	printf ("%d planes\n", map.num_planes);
 }
 
 
@@ -125,6 +132,8 @@ Map_LoadPolyEdges (const void *buf, int bufsize)
 	}
 	map.polyedges = mpolyedges;
 	map.num_polyedges = count;
+
+	printf ("%d polyedges\n", map.num_polyedges);
 }
 
 
@@ -156,6 +165,8 @@ Map_LoadPolys (const void *buf, int bufsize)
 	}
 	map.polys = mpolys;
 	map.num_polys = count;
+
+	printf ("%d polys\n", map.num_polys);
 }
 
 

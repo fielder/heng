@@ -2,21 +2,21 @@
 #define __R_POLY_H__
 
 #include "map.h"
-#include "r_span.h"
-#include "r_edge.h"
-
-struct drawpoly_s
-{
-	struct drawedge_s *edges;
-
-	struct drawspan_s *spans;
-	int num_spans;
-
-	struct mpoly_s *mpoly;
-};
-
+#include "r_defs.h"
 
 extern void
 R_BeginPolyFrame (void *buf, int buflen);
+
+extern void
+R_PolyGenEdges (struct mpoly_s *poly);
+
+extern void
+R_ScanPolyEdges (struct drawpoly_s *p);
+
+extern void
+R_DrawPolys (void);
+
+
+extern struct drawpoly_s *r_polys;
 
 #endif /* __R_POLY_H__ */

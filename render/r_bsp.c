@@ -1,6 +1,7 @@
 #include "cdefs.h"
 #include "vec.h"
 
+#include "map.h"
 #include "render.h"
 #include "r_misc.h"
 #include "r_span.h"
@@ -27,8 +28,24 @@ R_DrawWorld (void)
 
 	DrawGrid (1024, 16 * 7 - 2);
 
-	// - edge drawing for all polys in the leaf,
-	//   and all solid polys on the parent node
+	{
+		struct drawpoly_s *cluster_start;
+		struct mpoly_s *p;
+		int i;
+
+		cluster_start = r_polys;
+
+		for (i = 0, p = map.polys; i < map.num_polys; i++, p++)
+			R_PolyGenEdges (p);
+
+		while (cluster_start != r_polys)
+			R_ScanPolyEdges (cluster_start++);
+	}
+
+	R_DrawPolys ();
+
+	// - edge drawing for all polys in the leaf and all polys on
+	//   the parent node
 	// - emit spans for each emitted poly
 
 	// - then iterate over node portals
