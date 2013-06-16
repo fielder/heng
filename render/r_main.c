@@ -4,11 +4,11 @@
 #include "cdefs.h"
 #include "bswap.h"
 #include "vec.h"
+
 #include "render.h"
 #include "r_span.h"
-//#include "r_edge.h"
-#include "r_misc.h"
-#include "map.h"
+#include "r_edge.h"
+#include "r_bsp.h"
 
 struct r_vars_s r_vars;
 
@@ -20,7 +20,7 @@ CalcCamera (void);
 
 
 void
-SetupBuffer (uint8_t *buf, int w, int h, int pitch)
+R_SetupBuffer (uint8_t *buf, int w, int h, int pitch)
 {
 	SwapInit ();
 
@@ -32,12 +32,12 @@ SetupBuffer (uint8_t *buf, int w, int h, int pitch)
 	r_vars.framenum = 0;
 
 	R_SpanSetup ();
-//	R_EdgeSetup ();
+	R_EdgeSetup ();
 }
 
 
 void
-SetupProjection (float fov_x)
+R_SetupProjection (float fov_x)
 {
 	r_vars.center_x = r_vars.w / 2.0;
 	r_vars.center_y = r_vars.h / 2.0;
@@ -54,7 +54,7 @@ SetupProjection (float fov_x)
 
 
 void
-SetCamera (float pos[3], float angles[3])
+R_SetCamera (float pos[3], float angles[3])
 {
 	Vec_Copy (pos, r_vars.pos);
 	Vec_Copy (angles, r_vars.angles);
@@ -127,11 +127,8 @@ CalcCamera (void)
 
 
 void
-DrawWorld (void)
+R_Refresh (void)
 {
-	char spanbuf[0x8000];
-//	char edgebuf[0x8000];
-
 	if (cam_changed)
 	{
 		CalcCamera ();
@@ -140,44 +137,5 @@ DrawWorld (void)
 
 	r_vars.framenum++;
 
-	r_vars.vplanes[0].next = &r_vars.vplanes[1];
-	r_vars.vplanes[1].next = &r_vars.vplanes[2];
-	r_vars.vplanes[2].next = &r_vars.vplanes[3];
-	r_vars.vplanes[3].next = NULL;
-
-	R_BeginSpanFrame (spanbuf, sizeof(spanbuf));
-//	R_BeginEdgeFrame (edgebuf, sizeof(edgebuf));
-
-	DrawGrid (1024, 16 * 7 - 2);
-
-if (1)
-{
-	int i;
-	for (i = 0; i < map.num_polys; i++)
-	{
-		const struct mpoly_s *p = &map.polys[i];
-		int j;
-		for (j = 0; j < p->num_edges; j++)
-		{
-			int edgenum = p->edges[j] & 0x7fff;
-			const struct medge_s *edge = &map.edges[edgenum];
-		DrawLine3D (	map.verts[edge->v[0]].xyz,
-				map.verts[edge->v[1]].xyz,
-				16 * 7);
-		}
-	}
-}
-if (0)
-{
-	int i;
-	for (i = 0; i < map.num_edges; i++)
-	{
-		DrawLine3D (	map.verts[map.edges[i].v[0]].xyz,
-				map.verts[map.edges[i].v[1]].xyz,
-				16 * 7);
-	}
-}
-
-	//...
-	//...
+	R_DrawWorld ();
 }

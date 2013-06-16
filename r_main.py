@@ -14,7 +14,7 @@ def init():
     hvars.c_api = ctypes.cdll.LoadLibrary(hvars.RENDER_SO)
     print "Loaded %s" % hvars.RENDER_SO
 
-    hvars.c_api.SetupBuffer(hvars.screen, hvars.WIDTH, hvars.HEIGHT, hvars.WIDTH)
+    hvars.c_api.R_SetupBuffer(hvars.screen, hvars.WIDTH, hvars.HEIGHT, hvars.WIDTH)
 
     raw = hvars.iwad.readLump("PLAYPAL")
     for off in xrange(0, len(raw), 768):
@@ -33,7 +33,7 @@ def refresh():
     #TODO: ...
 
     # 3D drawing
-    hvars.c_api.DrawWorld()
+    hvars.c_api.R_Refresh()
 
 #   if console.up:
 #       console.draw(hvars.HEIGHT - (hvars.HEIGHT / 4))

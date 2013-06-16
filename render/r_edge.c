@@ -4,10 +4,11 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "render.h"
-#include "r_edge.h"
-#include "r_misc.h"
 #include "vec.h"
+
+#include "render.h"
+//#include "r_misc.h"
+#include "r_edge.h"
 
 //FIXME: it's important to clip against the left/right planes first
 //	so to generate the enter/exit points properly, else for the
@@ -271,12 +272,10 @@ R_DrawPoly (const struct viewplane_s *planes)
 
 	if (left_clip_count && left_clip_count != 2)
 	{
-		PushViewPos ("left_clip");
 		printf ("bad left count: %d\n", left_clip_count);
 	}
 	if (right_clip_count && right_clip_count != 2)
 	{
-		PushViewPos ("right_clip");
 		printf ("bad right count: %d\n", right_clip_count);
 	}
 	struct drawedge_s *e;

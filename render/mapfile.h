@@ -1,6 +1,8 @@
 #ifndef __MAP2_H__
 #define __MAP2_H__
 
+/* on-disk map structures */
+
 #define MAP_VERSION 1
 
 struct dvertex_s
@@ -37,6 +39,7 @@ struct dedge_s
 	unsigned short verts[2];
 };
 
+#if 0
 struct dleaf_s
 {
 	unsigned short flags;
@@ -46,7 +49,9 @@ struct dleaf_s
 
 	unsigned short light;
 };
+#endif
 
+#if 0
 struct dnode_s
 {
 	unsigned short flags;
@@ -57,6 +62,7 @@ struct dnode_s
 	unsigned short plane;
 	unsigned short children[2]; /* back, front */
 };
+#endif
 
 struct dpoly_s
 {
@@ -88,20 +94,3 @@ struct dmapheader_s
 
 /* We can take a viewpoint/node side test and re-use it for the polys
  * that lie on the node for quicker backface culling. */
-
-// MAP BUILD:
-// - merge vertices
-// - create poly planes
-// - create poly edges
-
-// MILESTONES
-// x camera setup
-// x move around world
-// x draw 3d point
-// x draw 3d line, clipped
-// draw 3d bbox
-// load the world
-// draw all edges just to see edges and vertexes are generated correctly
-// draw a poly, wireframe
-// draw a node, wireframe
-// draw a leaf, wireframe

@@ -24,7 +24,7 @@ def init():
     hvars.fov_x = math.radians(90.0)
     dist = (hvars.WIDTH / 2.0) / math.tan(hvars.fov_x / 2.0)
     hvars.fov_y = 2.0 * math.atan((hvars.HEIGHT / 2.0) / dist)
-    hvars.c_api.SetupProjection(ctypes.c_float(hvars.fov_x))
+    hvars.c_api.R_SetupProjection(ctypes.c_float(hvars.fov_x))
 
     _calcViewVecs()
 
@@ -45,7 +45,7 @@ def update():
     pos = c_vec3(hvars.pos[0], hvars.pos[1], hvars.pos[2])
     angles = c_vec3(hvars.angles[0], hvars.angles[1], hvars.angles[2])
 
-    hvars.c_api.SetCamera(pos, angles)
+    hvars.c_api.R_SetCamera(pos, angles)
 
 
 def beginFrame():

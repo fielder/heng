@@ -53,15 +53,15 @@ extern struct r_vars_s r_vars;
 
 
 extern void
-SetupBuffer (uint8_t *buf, int w, int h, int pitch);
+R_SetupBuffer (uint8_t *buf, int w, int h, int pitch);
 
 extern void
-SetupProjection (float fov_x);
+R_SetupProjection (float fov_x);
 
 extern void
-SetCamera (float pos[3], float angles[3]);
+R_SetCamera (float pos[3], float angles[3]);
 
 extern void
-DrawWorld (void);
+R_Refresh (void);
 
 #endif /* __RENDER_H__ */

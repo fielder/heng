@@ -157,3 +157,15 @@ Map_LoadPolys (const void *buf, int bufsize)
 	map.polys = mpolys;
 	map.num_polys = count;
 }
+
+
+void
+Map_LoadLeafs (const void *buf, int bufsize)
+{
+}
+
+
+void
+Map_LoadNodes (const void *buf, int bufsize)
+{
+}

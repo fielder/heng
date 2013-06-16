@@ -11,14 +11,6 @@ struct drawedge_s
 	/* no need for a dv as it's always 1 pixel */
 };
 
-struct drawpoly_s
-{
-	struct drawedge_s *edges;
-	int num_edges;
-
-	//struct mpoly_s *poly;
-};
-
 
 extern void
 R_EdgeSetup (void);

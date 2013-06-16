@@ -10,9 +10,10 @@ OBJS =	$(OBJDIR)/bswap.o \
 	$(OBJDIR)/r_main.o \
 	$(OBJDIR)/r_misc.o \
  	$(OBJDIR)/r_span.o \
- 	$(OBJDIR)/map.o
-
-#	$(OBJDIR)/r_edge.o
+ 	$(OBJDIR)/map.o \
+ 	$(OBJDIR)/r_edge.o \
+ 	$(OBJDIR)/r_bsp.o \
+ 	$(OBJDIR)/r_poly.o
 #	$(OBJDIR)/r_sprite.o \
 
 all: $(TARGET)
@@ -39,8 +40,12 @@ $(OBJDIR)/r_span.o: r_span.c
 	$(CC) -c $(CFLAGS) $? -o $@
 $(OBJDIR)/map.o: map.c
 	$(CC) -c $(CFLAGS) $? -o $@
-
 $(OBJDIR)/r_edge.o: r_edge.c
 	$(CC) -c $(CFLAGS) $? -o $@
+$(OBJDIR)/r_bsp.o: r_bsp.c
+	$(CC) -c $(CFLAGS) $? -o $@
+$(OBJDIR)/r_poly.o: r_poly.c
+	$(CC) -c $(CFLAGS) $? -o $@
+
 $(OBJDIR)/r_sprite.o: r_sprite.c
 	$(CC) -c $(CFLAGS) $? -o $@

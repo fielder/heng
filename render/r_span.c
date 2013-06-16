@@ -5,6 +5,13 @@
 #include "render.h"
 #include "r_span.h"
 
+/* green span */
+struct gspan_s
+{
+	struct gspan_s *prev, *next;
+	short left, right;
+};
+
 static struct drawspan_s *r_spans = NULL;
 static struct drawspan_s *r_spans_end = NULL;
 
