@@ -4,11 +4,15 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "cdefs.h"
 #include "vec.h"
 
+#include "map.h"
 #include "render.h"
 #include "r_defs.h"
 #include "r_edge.h"
+
+//TODO: need to emit edges for left/right clips
 
 //FIXME: it's important to clip against the left/right planes first
 //	so to generate the enter/exit points properly, else for the
@@ -16,6 +20,7 @@
 //	top/bottom first, all edges woud be clipped away leaving
 //	nothing enter/exit points and therefore nothing visible
 //	do it another way...?
+
 //FIXME: need to fix the filly clipped edge caching
 //	eg: If a poly isn't visible at all, and an edge that is clipped
 //	off the left/right, then fully rejected as above/below the frustum,
@@ -24,7 +29,7 @@
 //	Basically, we can't cache an edge as fully clipped if it is clipped
 //	by the left/right, then fully rejected off the top/bottom. A fully
 //	rejected edge must not touch the left/right planes.
-//
+
 //TODO: would like to associate portals w/ leaves so we can better
 // ignore some portals when choosing to draw them on nodes
 
@@ -34,6 +39,9 @@
 static struct drawedge_s *r_edges_start = NULL;
 static struct drawedge_s *r_edges_end = NULL;
 static struct drawedge_s *r_edges = NULL;
+
+static struct drawedge_s sort_head;
+static struct drawedge_s *sort_last;
 
 /* when the edge winding leaves the view, crossing a vertical plane,
  * and re-enters to the front side, we must create a new vertical
@@ -69,7 +77,7 @@ R_BeginEdgeFrame (void *buf, int buflen)
 }
 
 
-static int
+static void
 EmitEdge (const float p1[3], const float p2[3])
 {
 	struct drawedge_s *e;
@@ -86,7 +94,7 @@ EmitEdge (const float p1[3], const float p2[3])
 	float scale;
 
 	if (r_edges == r_edges_end)
-		return EDGE_MAX_REACHED;
+		return;
 
 	Vec_Subtract (p1, r_vars.pos, local);
 	Vec_Transform (r_vars.xform, local, out);
@@ -111,7 +119,7 @@ EmitEdge (const float p1[3], const float p2[3])
 	{
 		/* cache horizontal edges as fully clipped, as they will
 		 * be ignore entirely */
-		return EDGE_FULLY_CLIPPED;
+		return;
 	}
 	else if (v1_i < v2_i)
 	{
@@ -136,11 +144,25 @@ EmitEdge (const float p1[3], const float p2[3])
 		e->bottom = v1_i - 1;
 	}
 
-	return e - r_edges_start;
+	if (e->top >= sort_last->top)
+	{
+		e->next = NULL;
+		sort_last->next = e;
+		sort_last = e;
+	}
+	else
+	{
+		struct drawedge_s *prev;
+		for (	prev = &sort_head;
+			prev->next != NULL && prev->next->top < e->top;
+			prev = prev->next) {}
+		e->next = prev->next;
+		prev->next = e;
+	}
 }
 
 
-static int
+static void
 ClipEdge (float p1[3], float p2[3], const struct viewplane_s *planes)
 {
 	float clips[4 * 3];
@@ -189,7 +211,7 @@ ClipEdge (float p1[3], float p2[3], const struct viewplane_s *planes)
 			{
 				/* both vertices behind a plane; the
 				 * edge is fully clipped away */
-				return EDGE_FULLY_CLIPPED;
+				return;
 			}
 
 			frac = d1 / (d1 - d2);
@@ -217,32 +239,46 @@ ClipEdge (float p1[3], float p2[3], const struct viewplane_s *planes)
 		}
 	}
 
-	return EmitEdge (p1, p2);
+	EmitEdge (p1, p2);
 }
 
 
 struct drawedge_s *
-R_GenEdges (const unsigned short *edgerefs, int num_edges)
+R_GenEdges (const unsigned short *edgerefs, int num_edges, struct viewplane_s *cplanes)
 {
-	//...
-	return NULL;
+	unsigned short eref;
+	struct medge_s *medge;
+	struct mvertex_s *v1, *v2;
+
+	sort_head.top = -99999;
+	sort_head.next = NULL;
+	sort_last = &sort_head;
+
+	while (num_edges--)
+	{
+		eref = *edgerefs++;
+
+		medge = &map.edges[eref & 0x7fff];
+
+		if ((eref & 0x8000) == 0x8000)
+		{
+			v1 = map.verts + medge->v[1];
+			v2 = map.verts + medge->v[0];
+		}
+		else
+		{
+			v1 = map.verts + medge->v[0];
+			v2 = map.verts + medge->v[1];
+		}
+
+		ClipEdge (v1->xyz, v2->xyz, cplanes);
+	}
+
+	return sort_head.next;
 }
-
-
-//void
-//R_GenEdges (struct mpoly_s *poly)
-//{
-//}
 
 
 #if 0
-
-static int
-EmitCachedEdge (const struct drawedge_s *e)
-{
-	//...
-	return -1;
-}
 
 
 static void
@@ -291,9 +327,6 @@ R_DrawPoly (const struct viewplane_s *planes)
 
 //TODO: ensure we have at least p->num_edges free edges, return if not
 //TODO: if an edge clip returns EDGE_MAX_REACHED, return
-
-//TODO: if an edge clip returns EDGE_FULLY_CLIPPED, mark the medge_s cache high bit and set frame num
-
 //TODO: sanity check left/right clip counts
 //TODO: after all edges are emitted, emit left & right if clipped off the sides there
 }

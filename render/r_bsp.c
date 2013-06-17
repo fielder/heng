@@ -32,17 +32,24 @@ R_DrawWorld (void)
 		struct drawpoly_s *cluster_start;
 		struct mpoly_s *p;
 		int i;
+		bool on_back;
 
 		cluster_start = r_polys;
 
 		for (i = 0, p = map.polys; i < map.num_polys; i++, p++)
-			R_PolyGenEdges (p);
+		{
+			on_back = Vec_Dot(p->plane->normal, r_vars.pos) - p->plane->dist < 0.01;
+			if (p->side != on_back)
+				continue;
+
+			R_PolyGenEdges (p, &r_vars.vplanes[0]);
+		}
 
 		while (cluster_start != r_polys)
 			R_ScanPolyEdges (cluster_start++);
 	}
 
-	R_DrawPolys ();
+	R_RenderPolys ();
 
 	// - edge drawing for all polys in the leaf and all polys on
 	//   the parent node

@@ -3,6 +3,9 @@
 
 #include "r_defs.h"
 
+extern struct drawspan_s *r_spans;
+
+
 extern void
 R_SpanSetup (void);
 
@@ -14,8 +17,5 @@ R_BeginSpanFrame (void *buf, int buflen);
 
 extern void
 R_DrawGSpans (void);
-
-
-extern struct drawspan_s *r_spans;
 
 #endif /* __R_SPAN_H__ */

@@ -36,14 +36,14 @@ R_BeginPolyFrame (void *buf, int buflen)
 
 
 void
-R_PolyGenEdges (struct mpoly_s *poly)
+R_PolyGenEdges (struct mpoly_s *poly, struct viewplane_s *cplanes)
 {
 	struct drawedge_s *edges;
 
 	if (r_polys == r_polys_end)
 		return; //TODO: flush the pipeline and continue on
 
-	edges = R_GenEdges (poly->edges, poly->num_edges);
+	edges = R_GenEdges (poly->edges, poly->num_edges, cplanes);
 	if (edges != NULL)
 	{
 		struct drawpoly_s *p = r_polys++;
@@ -65,8 +65,9 @@ R_ScanPolyEdges (struct drawpoly_s *p)
 }
 
 
+#include <stdio.h>
 void
-R_DrawPolys (void)
+R_RenderPolys (void)
 {
 	struct drawpoly_s *p;
 
