@@ -57,7 +57,7 @@ Map_LoadEdges (const void *buf, int bufsize)
 
 		out->v[0] = LittleShort (in->verts[0]);
 		out->v[1] = LittleShort (in->verts[1]);
-		out->cache_offset = 0;
+		out->cache_index = 0;
 	}
 
 	if (map.edges != NULL)

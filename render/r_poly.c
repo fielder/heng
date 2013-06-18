@@ -10,7 +10,7 @@
 #include "r_poly.h"
 
 static void
-R_DrawPolySpans (struct drawpoly_s *p);
+R_RenderPolySpans (struct drawpoly_s *p);
 
 
 struct drawpoly_s *r_polys = NULL;
@@ -36,14 +36,14 @@ R_BeginPolyFrame (void *buf, int buflen)
 
 
 void
-R_PolyGenEdges (struct mpoly_s *poly, struct viewplane_s *cplanes)
+R_PolyGenEdges (struct mpoly_s *poly, struct viewplane_s *clips[2])
 {
 	struct drawedge_s *edges;
 
 	if (r_polys == r_polys_end)
 		return; //TODO: flush the pipeline and continue on
 
-	edges = R_GenEdges (poly->edges, poly->num_edges, cplanes);
+	edges = R_GenEdges (poly->edges, poly->num_edges, clips);
 	if (edges != NULL)
 	{
 		struct drawpoly_s *p = r_polys++;
@@ -59,25 +59,60 @@ R_PolyGenEdges (struct mpoly_s *poly, struct viewplane_s *cplanes)
 void
 R_ScanPolyEdges (struct drawpoly_s *p)
 {
-	//TODO: walk the poly edges, creating spans
-	//...
-// R_EmitSpan (short y, short x1, short x2)
+	int u, v;
+	struct drawedge_s *e;
+
+	for (e = p->edges; e != NULL; e = e->next)
+	{
+		for (v = e->top, u = e->u; v <= e->bottom; v++, u += e->du)
+			R_EmitSpan (v, u>>20, u>>20);
+//if (v >= 0 && v < r_vars.h && (u>>20) >= 0 && (u>>20) < r_vars.w)
+//r_vars.screen[v * r_vars.pitch + (u >> 20)] = 16 * 7;
+	}
+#if 0
+	struct drawedge_s *next = p->edges;
+	struct drawedge_s *pop, *pop2;
+	int v, next_v;
+	int u_l, u_step_l;
+	int u_r, u_step_r;
+
+	v = next->top;
+	while (1)
+	{
+		if (v == next->top)
+		{
+			pop = next;
+			next = next->next;
+
+			if (next->top == v)
+			{
+				/* 2 edges starting on the same scanline */
+			}
+			else
+			{
+				/* 1 new edge starting on the scanline */
+			}
+		}
+	}
+#endif
 }
 
+//TODO: always check for negative-len span before emitting
+// R_EmitSpan (short y, short x1, short x2)
 
-#include <stdio.h>
+
 void
 R_RenderPolys (void)
 {
 	struct drawpoly_s *p;
 
 	for (p = r_polys_start; p != r_polys; p++)
-		R_DrawPolySpans (p);
+		R_RenderPolySpans (p);
 }
 
 
 static void
-R_DrawPolySpans (struct drawpoly_s *p)
+R_RenderPolySpans (struct drawpoly_s *p)
 {
 	struct drawspan_s *span;
 	int i, color;
@@ -88,6 +123,7 @@ R_DrawPolySpans (struct drawpoly_s *p)
 	//TODO: texture mapping magic here
 
 	color = ((uintptr_t)p->mpoly >> 2) & 0xff;
+color = 16 * 7;//DEBUG
 
 	for (i = 0, span = p->spans; i < p->num_spans; i++, span++)
 	{

@@ -17,14 +17,19 @@ R_DrawWorld (void)
 	char edgebuf[0x8000];
 	char polybuf[0x8000];
 
+	struct viewplane_s *clips[2];
+
 	R_BeginSpanFrame (spanbuf, sizeof(spanbuf));
 	R_BeginEdgeFrame (edgebuf, sizeof(edgebuf));
 	R_BeginPolyFrame (polybuf, sizeof(polybuf));
 
-	r_vars.vplanes[0].next = &r_vars.vplanes[1];
-	r_vars.vplanes[1].next = &r_vars.vplanes[2];
-	r_vars.vplanes[2].next = &r_vars.vplanes[3];
-	r_vars.vplanes[3].next = NULL;
+	r_vars.vplanes[VPLANE_TOP].next = &r_vars.vplanes[VPLANE_BOTTOM];
+	r_vars.vplanes[VPLANE_BOTTOM].next = NULL;
+	clips[CPLANES_TOP_BOTTOM] = &r_vars.vplanes[VPLANE_TOP];
+
+	r_vars.vplanes[VPLANE_LEFT].next = &r_vars.vplanes[VPLANE_RIGHT];
+	r_vars.vplanes[VPLANE_RIGHT].next = NULL;
+	clips[CPLANES_LEFT_RIGHT] = &r_vars.vplanes[VPLANE_LEFT];
 
 	DrawGrid (1024, 16 * 7 - 2);
 
@@ -36,13 +41,14 @@ R_DrawWorld (void)
 
 		cluster_start = r_polys;
 
+map.num_polys = 1;//DEBUG
 		for (i = 0, p = map.polys; i < map.num_polys; i++, p++)
 		{
 			on_back = Vec_Dot(p->plane->normal, r_vars.pos) - p->plane->dist < 0.01;
 			if (p->side != on_back)
 				continue;
 
-			R_PolyGenEdges (p, &r_vars.vplanes[0]);
+			R_PolyGenEdges (p, clips);
 		}
 
 		while (cluster_start != r_polys)
@@ -50,6 +56,9 @@ R_DrawWorld (void)
 	}
 
 	R_RenderPolys ();
+
+	if (1)
+		R_RenderGSpans();
 
 	// - edge drawing for all polys in the leaf and all polys on
 	//   the parent node

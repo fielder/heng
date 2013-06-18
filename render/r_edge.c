@@ -1,6 +1,4 @@
 #include <math.h>
-#include <stdlib.h>
-#include <string.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -12,46 +10,19 @@
 #include "r_defs.h"
 #include "r_edge.h"
 
-//TODO: need to emit edges for left/right clips
-
-//FIXME: it's important to clip against the left/right planes first
-//	so to generate the enter/exit points properly, else for the
-//	case of a poly entirely surrounding the view, if we tested
-//	top/bottom first, all edges woud be clipped away leaving
-//	nothing enter/exit points and therefore nothing visible
-//	do it another way...?
-
-//FIXME: need to fix the filly clipped edge caching
-//	eg: If a poly isn't visible at all, and an edge that is clipped
-//	off the left/right, then fully rejected as above/below the frustum,
-//	we will cache it as entirely clipped. If a visible poly shares that
-//	edge we'll skip it when iterating over edges.
-//	Basically, we can't cache an edge as fully clipped if it is clipped
-//	by the left/right, then fully rejected off the top/bottom. A fully
-//	rejected edge must not touch the left/right planes.
-
 //TODO: would like to associate portals w/ leaves so we can better
 // ignore some portals when choosing to draw them on nodes
-
-#define EDGE_FULLY_CLIPPED 0xffffffff
-#define EDGE_MAX_REACHED 0x80000000
 
 static struct drawedge_s *r_edges_start = NULL;
 static struct drawedge_s *r_edges_end = NULL;
 static struct drawedge_s *r_edges = NULL;
+static struct drawedge_s *r_working = NULL;
 
 static struct drawedge_s sort_head;
 static struct drawedge_s *sort_last;
 
-/* when the edge winding leaves the view, crossing a vertical plane,
- * and re-enters to the front side, we must create a new vertical
- * edge */
-static int left_clip_count;
-static float clip_exit_left[3];
-static float clip_enter_left[3];
-static int right_clip_count;
-static float clip_exit_right[3];
-static float clip_enter_right[3];
+static float *r_clip;
+static float *r_p1, *r_p2;
 
 
 void
@@ -78,7 +49,32 @@ R_BeginEdgeFrame (void *buf, int buflen)
 
 
 static void
-EmitEdge (const float p1[3], const float p2[3])
+SortIn (struct drawedge_s *e)
+{
+	if (e->top >= sort_last->top)
+	{
+		e->next = NULL;
+		sort_last->next = e;
+		sort_last = e;
+	}
+	else
+	{
+		struct drawedge_s *prev;
+		for (	prev = &sort_head;
+			/* Note we're not doing an end-of-list NULL
+			 * check here. That case should be caught by
+			 * the sort_last check above, meaning we will
+			 * never hit the end of the list here. */
+			prev->next->top < e->top;
+			prev = prev->next) {}
+		e->next = prev->next;
+		prev->next = e;
+	}
+}
+
+
+static struct drawedge_s *
+EmitNewEdge (void)
 {
 	struct drawedge_s *e;
 
@@ -93,33 +89,25 @@ EmitEdge (const float p1[3], const float p2[3])
 	float local[3], out[3];
 	float scale;
 
-	if (r_edges == r_edges_end)
-		return;
-
-	Vec_Subtract (p1, r_vars.pos, local);
+	Vec_Subtract (r_p1, r_vars.pos, local);
 	Vec_Transform (r_vars.xform, local, out);
 	scale = r_vars.dist / out[2];
 	u1_f = r_vars.center_x - scale * out[0];
 	v1_f = r_vars.center_y - scale * out[1];
 	v1_i = floor(v1_f + 0.5);
 
-	Vec_Subtract (p2, r_vars.pos, local);
+	Vec_Subtract (r_p2, r_vars.pos, local);
 	Vec_Transform (r_vars.xform, local, out);
 	scale = r_vars.dist / out[2];
 	u2_f = r_vars.center_x - scale * out[0];
 	v2_f = r_vars.center_y - scale * out[1];
 	v2_i = floor(v2_f + 0.5);
 
-	//TODO: keep y extents on the screen, as we can get the 2 inputs as
-	//	vertical edges on the left/right vertical planes
-	//	sanity check that it _is_ vertical and on the left/right
-	//	that should be the only time we have to clip...
-
 	if (v1_i == v2_i)
 	{
-		/* cache horizontal edges as fully clipped, as they will
-		 * be ignore entirely */
-		return;
+		/* horizontal edges should be cached like fully rejected
+		 * edges */
+		return NULL;
 	}
 	else if (v1_i < v2_i)
 	{
@@ -144,35 +132,21 @@ EmitEdge (const float p1[3], const float p2[3])
 		e->bottom = v1_i - 1;
 	}
 
-	if (e->top >= sort_last->top)
-	{
-		e->next = NULL;
-		sort_last->next = e;
-		sort_last = e;
-	}
-	else
-	{
-		struct drawedge_s *prev;
-		for (	prev = &sort_head;
-			prev->next != NULL && prev->next->top < e->top;
-			prev = prev->next) {}
-		e->next = prev->next;
-		prev->next = e;
-	}
+	SortIn (e);
+
+	return e;
 }
 
 
-static void
-ClipEdge (float p1[3], float p2[3], const struct viewplane_s *planes)
+static int
+ClipTopBottom (struct viewplane_s *planes)
 {
-	float clips[4 * 3];
-	float *clip = clips;
 	float d1, d2, frac;
 
 	for (; planes != NULL; planes = planes->next)
 	{
-		d1 = Vec_Dot (planes->normal, p1) - planes->dist;
-		d2 = Vec_Dot (planes->normal, p2) - planes->dist;
+		d1 = Vec_Dot (planes->normal, r_p1) - planes->dist;
+		d2 = Vec_Dot (planes->normal, r_p2) - planes->dist;
 
 		if (d1 >= 0.0)
 		{
@@ -183,27 +157,12 @@ ClipEdge (float p1[3], float p2[3], const struct viewplane_s *planes)
 			}
 
 			frac = d1 / (d1 - d2);
-			clip[0] = p1[0] + frac * (p2[0] - p1[0]);
-			clip[1] = p1[1] + frac * (p2[1] - p1[1]);
-			clip[2] = p1[2] + frac * (p2[2] - p1[2]);
+			r_clip[0] = r_p1[0] + frac * (r_p2[0] - r_p1[0]);
+			r_clip[1] = r_p1[1] + frac * (r_p2[1] - r_p1[1]);
+			r_clip[2] = r_p1[2] + frac * (r_p2[2] - r_p1[2]);
 
-			if (planes == &r_vars.vplanes[VPLANE_LEFT])
-			{
-				clip_exit_left[0] = clip[0];
-				clip_exit_left[1] = clip[1];
-				clip_exit_left[2] = clip[2];
-				left_clip_count++;
-			}
-			else if (planes == &r_vars.vplanes[VPLANE_RIGHT])
-			{
-				clip_exit_right[0] = clip[0];
-				clip_exit_right[1] = clip[1];
-				clip_exit_right[2] = clip[2];
-				right_clip_count++;
-			}
-
-			p2 = clip;
-			clip += 3;
+			r_p2 = r_clip;
+			r_clip += 3;
 		}
 		else
 		{
@@ -211,44 +170,79 @@ ClipEdge (float p1[3], float p2[3], const struct viewplane_s *planes)
 			{
 				/* both vertices behind a plane; the
 				 * edge is fully clipped away */
-				return;
+				return 0;
 			}
 
 			frac = d1 / (d1 - d2);
-			clip[0] = p1[0] + frac * (p2[0] - p1[0]);
-			clip[1] = p1[1] + frac * (p2[1] - p1[1]);
-			clip[2] = p1[2] + frac * (p2[2] - p1[2]);
+			r_clip[0] = r_p1[0] + frac * (r_p2[0] - r_p1[0]);
+			r_clip[1] = r_p1[1] + frac * (r_p2[1] - r_p1[1]);
+			r_clip[2] = r_p1[2] + frac * (r_p2[2] - r_p1[2]);
 
-			if (planes == &r_vars.vplanes[VPLANE_LEFT])
-			{
-				clip_enter_left[0] = clip[0];
-				clip_enter_left[1] = clip[1];
-				clip_enter_left[2] = clip[2];
-				left_clip_count++;
-			}
-			else if (planes == &r_vars.vplanes[VPLANE_RIGHT])
-			{
-				clip_enter_right[0] = clip[0];
-				clip_enter_right[1] = clip[1];
-				clip_enter_right[2] = clip[2];
-				right_clip_count++;
-			}
-
-			p1 = clip;
-			clip += 3;
+			r_p1 = r_clip;
+			r_clip += 3;
 		}
 	}
 
-	EmitEdge (p1, p2);
+	return 1;
+}
+
+
+/*
+ * See if the edge is fully behind one of the 2 vertical clipping planes
+ */
+static int
+LeftRightFlags (const struct viewplane_s *planes)
+{
+	for (; planes != NULL; planes = planes->next)
+	{
+		if (	(Vec_Dot(planes->normal, r_p1) - planes->dist) < 0.0 &&
+			(Vec_Dot(planes->normal, r_p2) - planes->dist) < 0.0)
+		{
+			/* both verts behind */
+			if (planes == &r_vars.vplanes[VPLANE_LEFT])
+				return EDGE_LR_LEFT;
+			else
+				return EDGE_LR_RIGHT;
+		}
+	}
+	return EDGE_LR_VISIBLE;
+}
+
+
+static void
+EmitCached (const struct drawedge_s *cached)
+{
+	struct drawedge_s *e = r_edges++;
+
+	e->owner	= cached->owner;
+	e->top		= cached->top;
+	e->bottom	= cached->bottom;
+	e->u		= cached->u;
+	e->du		= cached->du;
+	e->lr_flags	= cached->lr_flags;
+
+	SortIn (e);
 }
 
 
 struct drawedge_s *
-R_GenEdges (const unsigned short *edgerefs, int num_edges, struct viewplane_s *cplanes)
+R_GenEdges (const unsigned short *edgerefs, int num_edges, struct viewplane_s *clips[2])
 {
-	unsigned short eref;
+	float clipverts[4 * 3]; //FIXME: should only need 2 vertices...i think
 	struct medge_s *medge;
-	struct mvertex_s *v1, *v2;
+	struct drawedge_s *emit;
+	unsigned short eref;
+	unsigned int cache_idx;
+	int lr_flags = 0x0;
+	int lrf;
+
+	if (r_edges + num_edges > r_edges_end)
+	{
+		//TODO: reset the pipeline and continue
+		return NULL;
+	}
+
+	r_working = r_edges;
 
 	sort_head.top = -99999;
 	sort_head.next = NULL;
@@ -257,29 +251,89 @@ R_GenEdges (const unsigned short *edgerefs, int num_edges, struct viewplane_s *c
 	while (num_edges--)
 	{
 		eref = *edgerefs++;
-
 		medge = &map.edges[eref & 0x7fff];
+		cache_idx = medge->cache_index & 0x7fffffff;
 
-		if ((eref & 0x8000) == 0x8000)
+		if ((medge->cache_index & 0x80000000) && cache_idx == r_vars.framenum)
 		{
-			v1 = map.verts + medge->v[1];
-			v2 = map.verts + medge->v[0];
+			/* edge is fully above/below the screen, ignore */
+			/* or horizontal */
+		}
+		else if (cache_idx < (r_edges - r_edges_start) &&
+			r_edges_start[cache_idx].owner == medge)
+		{
+			/* cached edge */
+			EmitCached (&r_edges_start[cache_idx]);
+			lr_flags |= r_edges_start[cache_idx].lr_flags;
 		}
 		else
 		{
-			v1 = map.verts + medge->v[0];
-			v2 = map.verts + medge->v[1];
-		}
+			//TODO: probably can complety get rid of
+			// edge directions if we don't care about
+			// knowing which poly is on the left/right
+			// of an emitted edge; that's really only
+			// needed for Quake's edge sorting/scanning
+			if ((eref & 0x8000) == 0x8000)
+			{
+				r_p1 = map.verts[medge->v[1]].xyz;
+				r_p2 = map.verts[medge->v[0]].xyz;
+			}
+			else
+			{
+				r_p1 = map.verts[medge->v[0]].xyz;
+				r_p2 = map.verts[medge->v[1]].xyz;
+			}
+			r_clip = clipverts;
 
-		ClipEdge (v1->xyz, v2->xyz, cplanes);
+			if (clips[CPLANES_TOP_BOTTOM] != NULL)
+			{
+				if (!ClipTopBottom(clips[CPLANES_TOP_BOTTOM]))
+				{
+					medge->cache_index = 0x80000000 | r_vars.framenum;
+					continue;
+				}
+			}
+
+			if (clips[CPLANES_LEFT_RIGHT] != NULL)
+				lrf = LeftRightFlags (clips[CPLANES_LEFT_RIGHT]);
+			else
+				lrf = EDGE_LR_VISIBLE;
+
+			emit = EmitNewEdge ();
+			if (emit == NULL)
+			{
+				/* is horizontal, treat like fully clipped */
+				medge->cache_index = 0x80000000 | r_vars.framenum;
+			}
+			else
+			{
+				emit->lr_flags = lrf;
+				lr_flags |= lrf;
+			}
+		}
 	}
+
+	if (lr_flags == EDGE_LR_LEFT || lr_flags == EDGE_LR_RIGHT)
+	{
+		/* all edges fully clipped off the left/right */
+
+		// Note this will un-cache anything we just emitted
+		// (but won't affect fully rejected cached edges)
+		r_edges = r_working;
+
+		return NULL;
+	}
+
+	//TODO: postpone edge caching to here so we don't cache a
+	// bunch of edges of polys entirely off the left/right planes
+
+	//TODO: postpone edge y-sorting to here
 
 	return sort_head.next;
 }
 
 
 #if 0
-
 
 static void
 DrawEdge (struct drawedge_s *e)
@@ -295,40 +349,4 @@ DrawEdge (struct drawedge_s *e)
 		u += e->du;
 	}
 }
-
-void
-R_DrawPoly (const struct viewplane_s *planes)
-{
-	int i, ni;
-
-	if (r_vars.pos[2] < p_verts[0][2] + 0.01)
-		return;
-
-	left_clip_count = 0;
-	right_clip_count = 0;
-
-	for (i = 0; i < sizeof(p_verts) / sizeof(p_verts[0]); i++)
-	{
-		ni = (i + 1) % (sizeof(p_verts) / sizeof(p_verts[0]));
-		ClipEdge (p_verts[i], p_verts[ni], planes);
-	}
-
-	if (left_clip_count && left_clip_count != 2)
-	{
-		printf ("bad left count: %d\n", left_clip_count);
-	}
-	if (right_clip_count && right_clip_count != 2)
-	{
-		printf ("bad right count: %d\n", right_clip_count);
-	}
-	struct drawedge_s *e;
-	for (e = r_edges_start; e != r_edges; e++)
-		DrawEdge (e);
-
-//TODO: ensure we have at least p->num_edges free edges, return if not
-//TODO: if an edge clip returns EDGE_MAX_REACHED, return
-//TODO: sanity check left/right clip counts
-//TODO: after all edges are emitted, emit left & right if clipped off the sides there
-}
-
 #endif

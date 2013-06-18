@@ -1,5 +1,5 @@
-#ifndef __MAP2_H__
-#define __MAP2_H__
+#ifndef __MAPFILE_H__
+#define __MAPFILE_H__
 
 /* on-disk map structures */
 
@@ -90,7 +90,7 @@ struct dmapheader_s
 	int version;
 };
 
-#endif /* __MAP2_H__ */
+#endif /* __MAPFILE_H__ */
 
 /* We can take a viewpoint/node side test and re-use it for the polys
  * that lie on the node for quicker backface culling. */

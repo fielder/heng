@@ -11,7 +11,7 @@ struct mvertex_s
 struct medge_s
 {
 	unsigned short v[2];
-	unsigned int cache_offset;
+	unsigned int cache_index;
 };
 
 struct mplane_s

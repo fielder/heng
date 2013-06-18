@@ -16,6 +16,6 @@ extern void
 R_BeginSpanFrame (void *buf, int buflen);
 
 extern void
-R_DrawGSpans (void);
+R_RenderGSpans (void);
 
 #endif /* __R_SPAN_H__ */

@@ -184,7 +184,7 @@ R_BeginSpanFrame (void *buf, int buflen)
  * be any gspans visible.
  */
 void
-R_DrawGSpans (void)
+R_RenderGSpans (void)
 {
 	const struct gspan_s *gs;
 	int i;
