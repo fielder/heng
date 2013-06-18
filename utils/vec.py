@@ -9,10 +9,6 @@ SIDE_FRONT = "front"
 SIDE_BACK  = "back"
 SIDE_CROSS = "cross"
 
-PITCH = 0
-YAW   = 1
-ROLL  = 2
-
 PLANE_NORMAL_EPSILON = 0.00001
 PLANE_DIST_EPSILON = 0.01
 
