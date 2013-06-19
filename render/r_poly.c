@@ -56,16 +56,20 @@ R_PolyGenEdges (struct mpoly_s *poly, struct viewplane_s *clips[2])
 }
 
 
+//TODO: always check for negative-len span before emitting
 void
 R_ScanPolyEdges (struct drawpoly_s *p)
 {
 	int u, v;
 	struct drawedge_s *e;
 
+	p->spans = r_spans;
+
+// or debug draw by simply extrapolating to the next vert
 	for (e = p->edges; e != NULL; e = e->next)
 	{
 		for (v = e->top, u = e->u; v <= e->bottom; v++, u += e->du)
-			R_EmitSpan (v, u>>20, u>>20);
+			R_ClipAndEmitSpan (v, u>>20, u>>20);
 //if (v >= 0 && v < r_vars.h && (u>>20) >= 0 && (u>>20) < r_vars.w)
 //r_vars.screen[v * r_vars.pitch + (u >> 20)] = 16 * 7;
 	}
@@ -95,10 +99,9 @@ R_ScanPolyEdges (struct drawpoly_s *p)
 		}
 	}
 #endif
-}
 
-//TODO: always check for negative-len span before emitting
-// R_EmitSpan (short y, short x1, short x2)
+	p->num_spans = r_spans - p->spans;
+}
 
 
 void
@@ -124,6 +127,7 @@ R_RenderPolySpans (struct drawpoly_s *p)
 
 	color = ((uintptr_t)p->mpoly >> 2) & 0xff;
 color = 16 * 7;//DEBUG
+color = 251;//DEBUG
 
 	for (i = 0, span = p->spans; i < p->num_spans; i++, span++)
 	{

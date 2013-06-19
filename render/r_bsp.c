@@ -44,7 +44,7 @@ R_DrawWorld (void)
 map.num_polys = 1;//DEBUG
 		for (i = 0, p = map.polys; i < map.num_polys; i++, p++)
 		{
-			on_back = Vec_Dot(p->plane->normal, r_vars.pos) - p->plane->dist < 0.01;
+			on_back = Vec_Dot(p->plane->normal, r_vars.pos) - p->plane->dist < BACKFACE_DIST;
 			if (p->side != on_back)
 				continue;
 
@@ -57,7 +57,7 @@ map.num_polys = 1;//DEBUG
 
 	R_RenderPolys ();
 
-	if (1)
+	if (0)
 		R_RenderGSpans();
 
 	// - edge drawing for all polys in the leaf and all polys on

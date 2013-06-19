@@ -3,6 +3,8 @@
 
 #include "map.h"
 
+#define BACKFACE_DIST 0.01
+
 enum
 {
 	CPLANES_TOP_BOTTOM,

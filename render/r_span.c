@@ -68,7 +68,7 @@ R_PushSpan (short y, short x1, short x2)
 
 
 void
-R_EmitSpan (short y, short x1, short x2)
+R_ClipAndEmitSpan (short y, short x1, short x2)
 {
 	struct gspan_s *head = &r_gspans[y];
 	struct gspan_s *gs, *next, *new;

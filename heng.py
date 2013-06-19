@@ -21,10 +21,12 @@ def _showFPS():
 
 
 def _debug():
+    print "pos:", hvars.pos
     pass
 
 
 if __name__ == "__main__":
+    sys.argv = [sys.argv[0]] + ["utils/doom.wad", "out2.zip"]
     if len(sys.argv) != 3:
         print "usage: %s <iwad> <map file>" % sys.argv[0]
         sys.exit(0)
@@ -47,6 +49,7 @@ if __name__ == "__main__":
     hio.bind("f", _showFPS)
     hio.bind("g", hio.toggleGrab)
     hio.bind("x", _debug)
+    hio.bind("c", hvars.c_api.ClearScreen)
 
     frame_start = hio.milliSeconds()
     while not hvars.do_quit:
