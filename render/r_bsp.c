@@ -41,7 +41,6 @@ R_DrawWorld (void)
 
 		cluster_start = r_polys;
 
-map.num_polys = 1;//DEBUG
 		for (i = 0, p = map.polys; i < map.num_polys; i++, p++)
 		{
 			on_back = Vec_Dot(p->plane->normal, r_vars.pos) - p->plane->dist < BACKFACE_DIST;
