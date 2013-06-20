@@ -21,6 +21,8 @@ enum
 
 struct r_vars_s
 {
+	int debug;
+
 	/* draw buffer */
 	int w, h, pitch;
 	uint8_t *screen;
@@ -60,6 +62,9 @@ R_SetupProjection (float fov_x);
 
 extern void
 R_SetCamera (float pos[3], float angles[3]);
+
+extern void
+R_SetDebug (int debug);
 
 extern void
 R_Refresh (void);

@@ -26,8 +26,6 @@ struct drawedge_s
 
 	int top, bottom;
 	int u, du; /* 12.20 fixed-point format */
-
-	int lr_flags;
 };
 
 

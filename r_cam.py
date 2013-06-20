@@ -53,6 +53,11 @@ def beginFrame():
         _frame_move[direction] = 0.0
 
 
+def setCamera(pos, angles):
+    hvars.pos = vec.Vec3(pos)
+    hvars.angles = vec.Vec3(angles)
+
+
 def thrustCamera(left, up, forward):
     hvars.pos += hvars.left * left
     hvars.pos += hvars.up * up

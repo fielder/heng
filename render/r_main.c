@@ -127,6 +127,13 @@ CalcCamera (void)
 
 
 void
+R_SetDebug (int debug)
+{
+	r_vars.debug = debug;
+}
+
+
+void
 R_Refresh (void)
 {
 	if (cam_changed)

@@ -23,6 +23,10 @@ static struct drawedge_s *sort_last;
 
 static float *r_clip;
 static float *r_p1, *r_p2;
+static float *r_left_enter, *r_left_exit;
+static float *r_right_enter, *r_right_exit;
+static int r_left_touched, r_right_touched;
+static int r_isclipped;
 
 
 void
@@ -96,12 +100,30 @@ EmitNewEdge (void)
 	v1_f = r_vars.center_y - scale * out[1];
 	v1_i = floor(v1_f + 0.5);
 
+if (r_vars.debug)
+{
+	printf ("\n");
+	printf ("dist: %f\n", r_vars.dist);
+	printf ("scale: %f\n", scale);
+	printf ("out: %f %f %f\n", out[0],out[1],out[2]);
+	printf ("v1:  %f %f\n",u1_f,v1_f);
+}
+
 	Vec_Subtract (r_p2, r_vars.pos, local);
 	Vec_Transform (r_vars.xform, local, out);
 	scale = r_vars.dist / out[2];
 	u2_f = r_vars.center_x - scale * out[0];
 	v2_f = r_vars.center_y - scale * out[1];
 	v2_i = floor(v2_f + 0.5);
+
+if (r_vars.debug)
+{
+	printf ("\n");
+	printf ("dist: %f\n", r_vars.dist);
+	printf ("scale: %f\n", scale);
+	printf ("out: %f %f %f\n", out[0],out[1],out[2]);
+	printf ("v2:  %f %f\n",u2_f,v2_f);
+}
 
 	if (v1_i == v2_i)
 	{
@@ -139,7 +161,7 @@ EmitNewEdge (void)
 
 
 static int
-ClipTopBottom (struct viewplane_s *planes)
+ClipLeftRight (const struct viewplane_s *planes)
 {
 	float d1, d2, frac;
 
@@ -150,19 +172,38 @@ ClipTopBottom (struct viewplane_s *planes)
 
 		if (d1 >= 0.0)
 		{
-			if (d2 >= 0.0)
+			if (d2 < 0.0)
+			{
+				/* edge runs from front -> back */
+
+				frac = d1 / (d1 - d2);
+				r_clip[0] = r_p1[0] + frac * (r_p2[0] - r_p1[0]);
+				r_clip[1] = r_p1[1] + frac * (r_p2[1] - r_p1[1]);
+				r_clip[2] = r_p1[2] + frac * (r_p2[2] - r_p1[2]);
+
+				if (planes == &r_vars.vplanes[VPLANE_LEFT])
+				{
+					r_left_exit[0] = r_clip[0];
+					r_left_exit[1] = r_clip[1];
+					r_left_exit[2] = r_clip[2];
+					r_left_touched++;
+				}
+				else
+				{
+					r_right_exit[0] = r_clip[0];
+					r_right_exit[1] = r_clip[1];
+					r_right_exit[2] = r_clip[2];
+					r_right_touched++;
+				}
+
+				r_p2 = r_clip;
+				r_clip += 3;
+				r_isclipped = 1;
+			}
+			else
 			{
 				/* both vertices on the front side */
-				continue;
 			}
-
-			frac = d1 / (d1 - d2);
-			r_clip[0] = r_p1[0] + frac * (r_p2[0] - r_p1[0]);
-			r_clip[1] = r_p1[1] + frac * (r_p2[1] - r_p1[1]);
-			r_clip[2] = r_p1[2] + frac * (r_p2[2] - r_p1[2]);
-
-			r_p2 = r_clip;
-			r_clip += 3;
 		}
 		else
 		{
@@ -172,14 +213,34 @@ ClipTopBottom (struct viewplane_s *planes)
 				 * edge is fully clipped away */
 				return 0;
 			}
+			else
+			{
+				/* edge runs from back -> front */
 
-			frac = d1 / (d1 - d2);
-			r_clip[0] = r_p1[0] + frac * (r_p2[0] - r_p1[0]);
-			r_clip[1] = r_p1[1] + frac * (r_p2[1] - r_p1[1]);
-			r_clip[2] = r_p1[2] + frac * (r_p2[2] - r_p1[2]);
+				frac = d1 / (d1 - d2);
+				r_clip[0] = r_p1[0] + frac * (r_p2[0] - r_p1[0]);
+				r_clip[1] = r_p1[1] + frac * (r_p2[1] - r_p1[1]);
+				r_clip[2] = r_p1[2] + frac * (r_p2[2] - r_p1[2]);
 
-			r_p1 = r_clip;
-			r_clip += 3;
+				if (planes == &r_vars.vplanes[VPLANE_LEFT])
+				{
+					r_left_enter[0] = r_clip[0];
+					r_left_enter[1] = r_clip[1];
+					r_left_enter[2] = r_clip[2];
+					r_left_touched++;
+				}
+				else
+				{
+					r_right_enter[0] = r_clip[0];
+					r_right_enter[1] = r_clip[1];
+					r_right_enter[2] = r_clip[2];
+					r_right_touched++;
+				}
+
+				r_p1 = r_clip;
+				r_clip += 3;
+				r_isclipped = 1;
+			}
 		}
 	}
 
@@ -187,25 +248,61 @@ ClipTopBottom (struct viewplane_s *planes)
 }
 
 
-/*
- * See if the edge is fully behind one of the 2 vertical clipping planes
- */
 static int
-LeftRightFlags (const struct viewplane_s *planes)
+ClipTopBottom (const struct viewplane_s *planes)
 {
+	float d1, d2, frac;
+
 	for (; planes != NULL; planes = planes->next)
 	{
-		if (	(Vec_Dot(planes->normal, r_p1) - planes->dist) < 0.0 &&
-			(Vec_Dot(planes->normal, r_p2) - planes->dist) < 0.0)
+		d1 = Vec_Dot (planes->normal, r_p1) - planes->dist;
+		d2 = Vec_Dot (planes->normal, r_p2) - planes->dist;
+
+		if (d1 >= 0.0)
 		{
-			/* both verts behind */
-			if (planes == &r_vars.vplanes[VPLANE_LEFT])
-				return EDGE_LR_LEFT;
+			if (d2 < 0.0)
+			{
+				/* edge runs from front -> back */
+
+				frac = d1 / (d1 - d2);
+				r_clip[0] = r_p1[0] + frac * (r_p2[0] - r_p1[0]);
+				r_clip[1] = r_p1[1] + frac * (r_p2[1] - r_p1[1]);
+				r_clip[2] = r_p1[2] + frac * (r_p2[2] - r_p1[2]);
+
+				r_p2 = r_clip;
+				r_clip += 3;
+				r_isclipped = 1;
+			}
 			else
-				return EDGE_LR_RIGHT;
+			{
+				/* both vertices on the front side */
+			}
+		}
+		else
+		{
+			if (d2 < 0.0)
+			{
+				/* both vertices behind a plane; the
+				 * edge is fully clipped away */
+				return 0;
+			}
+			else
+			{
+				/* edge runs from back -> front */
+
+				frac = d1 / (d1 - d2);
+				r_clip[0] = r_p1[0] + frac * (r_p2[0] - r_p1[0]);
+				r_clip[1] = r_p1[1] + frac * (r_p2[1] - r_p1[1]);
+				r_clip[2] = r_p1[2] + frac * (r_p2[2] - r_p1[2]);
+
+				r_p1 = r_clip;
+				r_clip += 3;
+				r_isclipped = 1;
+			}
 		}
 	}
-	return EDGE_LR_VISIBLE;
+
+	return 1;
 }
 
 
@@ -219,7 +316,6 @@ EmitCached (const struct drawedge_s *cached)
 	e->bottom	= cached->bottom;
 	e->u		= cached->u;
 	e->du		= cached->du;
-	e->lr_flags	= cached->lr_flags;
 
 	SortIn (e);
 }
@@ -228,21 +324,27 @@ EmitCached (const struct drawedge_s *cached)
 struct drawedge_s *
 R_GenEdges (const unsigned short *edgerefs, int num_edges, struct viewplane_s *clips[2])
 {
-	float clipverts[4 * 3]; //FIXME: should only need 2 vertices...i think
+	float clipverts[4 * 3];
+	float enter_l[3], enter_r[3], exit_l[3], exit_r[3];
 	struct medge_s *medge;
 	struct drawedge_s *emit;
 	unsigned short eref;
 	unsigned int cache_idx;
-	int lr_flags = 0x0;
-	int lrf;
 
-	if (r_edges + num_edges > r_edges_end)
+	if (r_edges + num_edges + 2 > r_edges_end)
 	{
 		//TODO: reset the pipeline and continue
 		return NULL;
 	}
 
 	r_working = r_edges;
+
+	r_left_enter = enter_l;
+	r_left_exit = exit_l;
+	r_right_enter = enter_r;
+	r_right_exit = exit_r;
+	r_left_touched = 0;
+	r_right_touched = 0;
 
 	sort_head.top = -99999;
 	sort_head.next = NULL;
@@ -253,10 +355,11 @@ R_GenEdges (const unsigned short *edgerefs, int num_edges, struct viewplane_s *c
 		eref = *edgerefs++;
 		medge = &map.edges[eref & 0x7fff];
 		cache_idx = medge->cache_index & 0x7fffffff;
+		r_isclipped = 0;
 
 		if ((medge->cache_index & 0x80000000) && cache_idx == r_vars.framenum)
 		{
-			/* edge is fully above/below the screen, ignore */
+			/* edge is marked as non-visible, ignore */
 			/* or horizontal */
 		}
 		else if (cache_idx < (r_edges - r_edges_start) &&
@@ -264,7 +367,6 @@ R_GenEdges (const unsigned short *edgerefs, int num_edges, struct viewplane_s *c
 		{
 			/* cached edge */
 			EmitCached (&r_edges_start[cache_idx]);
-			lr_flags |= r_edges_start[cache_idx].lr_flags;
 		}
 		else
 		{
@@ -285,47 +387,90 @@ R_GenEdges (const unsigned short *edgerefs, int num_edges, struct viewplane_s *c
 			}
 			r_clip = clipverts;
 
-			if (clips[CPLANES_TOP_BOTTOM] != NULL)
+			if (clips[CPLANES_LEFT_RIGHT] != NULL)
 			{
-				if (!ClipTopBottom(clips[CPLANES_TOP_BOTTOM]))
+				if (!ClipLeftRight(clips[CPLANES_LEFT_RIGHT]))
 				{
+					/* we can cache edges fully off
+					 * the left/right because they
+					 * don't contribute to the enter
+					 * or exit points */
 					medge->cache_index = 0x80000000 | r_vars.framenum;
 					continue;
 				}
 			}
 
-			if (clips[CPLANES_LEFT_RIGHT] != NULL)
-				lrf = LeftRightFlags (clips[CPLANES_LEFT_RIGHT]);
-			else
-				lrf = EDGE_LR_VISIBLE;
+			if (clips[CPLANES_TOP_BOTTOM] != NULL)
+			{
+				if (!ClipTopBottom(clips[CPLANES_TOP_BOTTOM]))
+					continue;
+			}
 
 			emit = EmitNewEdge ();
 			if (emit == NULL)
 			{
-				/* is horizontal, treat like fully clipped */
+				/* ignore horizontal edges entirely as
+				 * they never contribute to span
+				 * generation at all */
 				medge->cache_index = 0x80000000 | r_vars.framenum;
 			}
 			else
 			{
-				emit->lr_flags = lrf;
-				lr_flags |= lrf;
+				emit->owner = medge;
+				if (r_isclipped)
+				{
+					/* set so the next time we visit
+					 * this edge the index check
+					 * will fail when checking if
+					 * cached */
+					medge->cache_index = 0x7fffffff;
+				}
+				else
+					medge->cache_index = emit - r_edges_start;
 			}
 		}
 	}
 
-	if (lr_flags == EDGE_LR_LEFT || lr_flags == EDGE_LR_RIGHT)
+	if (r_left_touched)
 	{
-		/* all edges fully clipped off the left/right */
-
-		// Note this will un-cache anything we just emitted
-		// (but won't affect fully rejected cached edges)
-		r_edges = r_working;
-
-		return NULL;
+		r_p1 = r_left_enter;
+		r_p2 = r_left_exit;
+		r_clip = clipverts;
+		if (ClipTopBottom(clips[CPLANES_TOP_BOTTOM]))
+		{
+if (r_vars.debug)
+{
+	printf ("extra left emit %d\n", r_left_touched);
+	printf ("%f %f %f - %f %f %f\n",
+			r_p1[0], r_p1[1], r_p1[2],
+			r_p2[0], r_p2[1], r_p2[2]);
+}
+			emit = EmitNewEdge ();
+			if (emit != NULL)
+				emit->owner = NULL;
+		}
 	}
-
-	//TODO: postpone edge caching to here so we don't cache a
-	// bunch of edges of polys entirely off the left/right planes
+	if (r_right_touched)
+	{
+		r_p1 = r_right_enter;
+		r_p2 = r_right_exit;
+		r_clip = clipverts;
+		if (ClipTopBottom(clips[CPLANES_TOP_BOTTOM]))
+		{
+if (r_vars.debug)
+{
+	printf ("extra right emit %d\n", r_right_touched);
+	printf ("%f %f %f - %f %f %f\n",
+			r_p1[0], r_p1[1], r_p1[2],
+			r_p2[0], r_p2[1], r_p2[2]);
+}
+			emit = EmitNewEdge ();
+			if (emit != NULL)
+				emit->owner = NULL;
+		}
+	}
+if (r_vars.debug)
+	printf ("\n");
 
 	//TODO: postpone edge y-sorting to here
 

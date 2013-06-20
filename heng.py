@@ -21,8 +21,14 @@ def _showFPS():
 
 
 def _debug():
-    print "pos:", hvars.pos
-    pass
+    print "pos   :", hvars.pos
+    print "angles:", hvars.angles
+    hvars.c_api.R_SetDebug(1)
+
+def _debug2():
+    pos = (59.06465037961378, 38.75378027843006, 287.1767908883728)
+    angles = (0.18768782339804116, 0.0, 0.0)
+    r_cam.setCamera(pos, angles)
 
 
 if __name__ == "__main__":
@@ -49,10 +55,13 @@ if __name__ == "__main__":
     hio.bind("f", _showFPS)
     hio.bind("g", hio.toggleGrab)
     hio.bind("x", _debug)
+    hio.bind("k", _debug2)
     hio.bind("c", hvars.c_api.ClearScreen)
 
     frame_start = hio.milliSeconds()
     while not hvars.do_quit:
+        hvars.c_api.R_SetDebug(0)
+
         r_cam.beginFrame()
 
         hio.runInput()
