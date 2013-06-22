@@ -28,7 +28,6 @@ static float *r_right_enter, *r_right_exit;
 static int r_left_touched, r_right_touched;
 static int r_isclipped;
 
-	unsigned short eref;
 
 void
 R_EdgeSetup (void)
@@ -101,30 +100,12 @@ EmitNewEdge (void)
 	v1_f = r_vars.center_y - scale * out[1];
 	v1_i = floor(v1_f + 0.5);
 
-if (r_vars.debug && eref == 3)
-{
-	printf ("\n");
-	printf ("dist: %f\n", r_vars.dist);
-	printf ("scale: %f\n", scale);
-	printf ("out: %f %f %f\n", out[0],out[1],out[2]);
-	printf ("v1:  %f %f\n",u1_f,v1_f);
-}
-
 	Vec_Subtract (r_p2, r_vars.pos, local);
 	Vec_Transform (r_vars.xform, local, out);
 	scale = r_vars.dist / out[2];
 	u2_f = r_vars.center_x - scale * out[0];
 	v2_f = r_vars.center_y - scale * out[1];
 	v2_i = floor(v2_f + 0.5);
-
-if (r_vars.debug && eref == 3)
-{
-	printf ("\n");
-	printf ("dist: %f\n", r_vars.dist);
-	printf ("scale: %f\n", scale);
-	printf ("out: %f %f %f\n", out[0],out[1],out[2]);
-	printf ("v2:  %f %f\n",u2_f,v2_f);
-}
 
 	if (v1_i == v2_i)
 	{
@@ -329,7 +310,7 @@ R_GenEdges (const unsigned short *edgerefs, int num_edges, struct viewplane_s *c
 	float enter_l[3], enter_r[3], exit_l[3], exit_r[3];
 	struct medge_s *medge;
 	struct drawedge_s *emit;
-//	unsigned short eref;
+	unsigned short eref;
 	unsigned int cache_idx;
 
 	if (r_edges + num_edges + 2 > r_edges_end)
@@ -362,16 +343,12 @@ R_GenEdges (const unsigned short *edgerefs, int num_edges, struct viewplane_s *c
 		{
 			/* edge is marked as non-visible, ignore */
 			/* or horizontal */
-if (r_vars.debug && eref == 3)
-	printf ("cached non-visible\n");
 		}
 		else if (cache_idx < (r_edges - r_edges_start) &&
 			r_edges_start[cache_idx].owner == medge)
 		{
 			/* cached edge */
 			EmitCached (&r_edges_start[cache_idx]);
-if (r_vars.debug && eref == 3)
-	printf ("cached\n");
 		}
 		else
 		{
@@ -401,8 +378,6 @@ if (r_vars.debug && eref == 3)
 					 * don't contribute to the enter
 					 * or exit points */
 					medge->cache_index = 0x80000000 | r_vars.framenum;
-if (r_vars.debug && eref == 3)
-	printf ("cached off left/right\n");
 					continue;
 				}
 			}
@@ -438,17 +413,8 @@ if (r_vars.debug && eref == 3)
 		}
 	}
 
-eref=0xffff;
-
 	if (r_left_touched)
 	{
-if (r_vars.debug)
-{
-	printf ("left touch %d:\n", r_left_touched);
-	printf ("%f %f %f - %f %f %f\n",
-			r_left_exit[0], r_left_exit[1], r_left_exit[2],
-			r_left_enter[0], r_left_enter[1], r_left_enter[2]);
-}
 		r_p1 = r_left_enter;
 		r_p2 = r_left_exit;
 		r_clip = clipverts;
@@ -462,13 +428,6 @@ if (r_vars.debug)
 
 	if (r_right_touched)
 	{
-if (r_vars.debug)
-{
-	printf ("right touch %d:\n", r_right_touched);
-	printf ("%f %f %f - %f %f %f\n",
-			r_right_exit[0], r_right_exit[1], r_right_exit[2],
-			r_right_enter[0], r_right_enter[1], r_right_enter[2]);
-}
 		r_p1 = r_right_enter;
 		r_p2 = r_right_exit;
 		r_clip = clipverts;
@@ -480,28 +439,7 @@ if (r_vars.debug)
 		}
 	}
 
-if (r_vars.debug) printf ("\n");
-
 	//TODO: postpone edge y-sorting to here
 
 	return sort_head.next;
 }
-
-
-#if 0
-
-static void
-DrawEdge (struct drawedge_s *e)
-{
-	int u, y;
-
-	u = e->u;
-	y = e->top;
-	while (y <= e->bottom)
-	{
-		r_vars.screen[y * r_vars.pitch + (u >> 20)] = 16 * 7;
-		y += 1;
-		u += e->du;
-	}
-}
-#endif
