@@ -3,7 +3,7 @@
 
 /* on-disk map structures */
 
-#define MAP_VERSION 1
+#define MAP_VERSION 2
 
 struct dvertex_s
 {
@@ -14,8 +14,6 @@ struct dplane_s
 {
 	float normal[3];
 	float dist;
-	unsigned short signbits;
-	unsigned short type;
 };
 
 /* Note 2 coplanar planes with opposing normals will be merged into just
@@ -23,38 +21,21 @@ struct dplane_s
  * and any object referencing the old plane will now be considered on
  * the reverse side. (eg: something on the front will now be on the back
  * side) */
-enum
-{
-	PLANE_X, /* (1, 0, 0) */
-	PLANE_Y, /* (0, 1, 0) */
-	PLANE_Z, /* (0, 0, 1) */
-	PLANE_0, /* (+x, +y, +z) */
-	PLANE_1, /* (+x, +y, -z) */
-	PLANE_2, /* (+x, -y, +z) */
-	PLANE_3, /* (+x, -y, -z) */
-};
 
 struct dedge_s
 {
 	unsigned short verts[2];
 };
 
-#if 0
 struct dleaf_s
 {
-	unsigned short flags;
 	short mins[3], maxs[3];
 	unsigned short first_poly;
 	unsigned short num_polys;
-
-	unsigned short light;
 };
-#endif
 
-#if 0
 struct dnode_s
 {
-	unsigned short flags;
 	short mins[3], maxs[3];
 	unsigned short first_poly;
 	unsigned short num_polys;
@@ -62,7 +43,6 @@ struct dnode_s
 	unsigned short plane;
 	unsigned short children[2]; /* back, front */
 };
-#endif
 
 struct dpoly_s
 {

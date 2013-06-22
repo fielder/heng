@@ -22,8 +22,19 @@ struct mplane_s
 	int type;
 };
 
-#define POLY_SIDE_FRONT 0
-#define POLY_SIDE_BACK 1
+enum
+{
+	PLANE_X, /* (1, 0, 0) */
+	PLANE_Y, /* (0, 1, 0) */
+	PLANE_Z, /* (0, 0, 1) */
+	PLANE_OTHER, /* non-axial planes */
+};
+
+enum
+{
+	POLY_SIDE_FRONT,
+	POLY_SIDE_BACK,
+};
 
 struct mpoly_s
 {
@@ -36,14 +47,21 @@ struct mpoly_s
 
 struct mleaf_s
 {
-	int xxx;
-	//TODO: ...
+	int is_leaf;
+	short mins[3], maxs[3];
+	struct mpoly_s *polys;
+	int num_polys;
 };
 
 struct mnode_s
 {
-	int xxx;
-	//TODO: ...
+	int is_leaf;
+	short mins[3], maxs[3];
+	struct mpoly_s *polys;
+	int num_polys;
+
+	struct mplane_s *plane;
+	void *children[2]; /* back, front */
 };
 
 struct map_s

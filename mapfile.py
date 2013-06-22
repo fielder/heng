@@ -4,7 +4,7 @@ import ctypes
 
 import hvars
 
-MAP_VERSION = 1
+MAP_VERSION = 2
 
 
 def read(path):
