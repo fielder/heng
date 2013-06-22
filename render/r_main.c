@@ -69,6 +69,7 @@ CalcCamera (void)
 	float v[3];
 	float ang;
 	struct viewplane_s *p;
+	int i;
 
 	/* make transformation matrix */
 	Vec_Copy (r_vars.angles, v);
@@ -96,6 +97,8 @@ CalcCamera (void)
 	v[2] = sin (ang);
 	Vec_Transform (cam2world, v, p->normal);
 	p->dist = Vec_Dot (p->normal, r_vars.pos);
+	for (i = 0; i < 3; i++)
+		p->minmax_lookup[i] = p->normal[i] < 0.0;
 
 	/* right */
 	p = &r_vars.vplanes[VPLANE_RIGHT];
@@ -105,6 +108,8 @@ CalcCamera (void)
 	v[2] = sin (ang);
 	Vec_Transform (cam2world, v, p->normal);
 	p->dist = Vec_Dot (p->normal, r_vars.pos);
+	for (i = 0; i < 3; i++)
+		p->minmax_lookup[i] = p->normal[i] < 0.0;
 
 	/* top */
 	p = &r_vars.vplanes[VPLANE_TOP];
@@ -114,6 +119,8 @@ CalcCamera (void)
 	v[2] = sin (ang);
 	Vec_Transform (cam2world, v, p->normal);
 	p->dist = Vec_Dot (p->normal, r_vars.pos);
+	for (i = 0; i < 3; i++)
+		p->minmax_lookup[i] = p->normal[i] < 0.0;
 
 	/* bottom */
 	p = &r_vars.vplanes[VPLANE_BOTTOM];
@@ -123,6 +130,8 @@ CalcCamera (void)
 	v[2] = sin (ang);
 	Vec_Transform (cam2world, v, p->normal);
 	p->dist = Vec_Dot (p->normal, r_vars.pos);
+	for (i = 0; i < 3; i++)
+		p->minmax_lookup[i] = p->normal[i] < 0.0;
 }
 
 

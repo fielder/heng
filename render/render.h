@@ -8,6 +8,8 @@ struct viewplane_s
 	float normal[3];
 	float dist;
 
+	int minmax_lookup[3];
+
 	struct viewplane_s *next;
 };
 
