@@ -92,11 +92,11 @@ Map_LoadPlanes (const void *buf, int bufsize)
 		out->normal[2] = LittleFloat (in->normal[2]);
 		out->dist = LittleFloat (in->dist);
 
-		if (out->normal[0] == 1.0)
+		if (out->normal[0] == 1.0 || out->normal[0] == -1.0)
 			out->type = PLANE_X;
-		else if (out->normal[1] == 1.0)
+		else if (out->normal[1] == 1.0 || out->normal[1] == -1.0)
 			out->type = PLANE_Y;
-		else if (out->normal[2] == 1.0)
+		else if (out->normal[2] == 1.0 || out->normal[2] == -1.0)
 			out->type = PLANE_Z;
 		else
 			out->type = PLANE_OTHER;
