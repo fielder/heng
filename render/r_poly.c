@@ -60,6 +60,7 @@ R_PolyGenEdges (struct mpoly_s *poly, const struct viewplane_s *cplanes)
 void
 R_ScanPolyEdges (struct drawpoly_s *p)
 {
+#if 1
 	struct drawedge_s *left_next, *right_next;
 	int v, next_v;
 	int u_l, u_step_l;
@@ -76,9 +77,11 @@ R_ScanPolyEdges (struct drawpoly_s *p)
 	if (right_next != NULL && right_next->top < v)
 		v = right_next->top;
 
-	while (left_next != NULL || right_next != NULL)
-	{
-	}
+//	while (left_next != NULL || right_next != NULL)
+//	{
+//	}
+
+#endif
 
 #if 0
 	int u, v;

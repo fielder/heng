@@ -17,9 +17,6 @@ static struct drawedge_s *r_edges_start = NULL;
 static struct drawedge_s *r_edges_end = NULL;
 static struct drawedge_s *r_edges = NULL;
 
-static struct drawedge_s sort_head[2];
-static struct drawedge_s *sort_last[2];
-
 static float *r_p1, *r_p2;
 
 
@@ -43,31 +40,6 @@ R_BeginEdgeFrame (void *buf, int buflen)
 
 	r_edges_start = r_edges = (struct drawedge_s *)p;
 	r_edges_end = r_edges_start + (buflen / sizeof(struct drawedge_s));
-}
-
-
-static void
-SortIn (struct drawedge_s *e)
-{
-	if (e->top >= sort_last[e->is_right]->top)
-	{
-		e->next = NULL;
-		sort_last[e->is_right]->next = e;
-		sort_last[e->is_right] = e;
-	}
-	else
-	{
-		struct drawedge_s *prev;
-		for (	prev = &sort_head[e->is_right];
-			/* Note we're not doing an end-of-list NULL
-			 * check here. That case should be caught by
-			 * the sort_last check above, meaning we will
-			 * never hit the end of the list here. */
-			prev->next->top < e->top;
-			prev = prev->next) {}
-		e->next = prev->next;
-		prev->next = e;
-	}
 }
 
 
@@ -132,8 +104,6 @@ EmitNewEdge (void)
 		e->is_right = 1;
 	}
 
-	SortIn (e);
-
 	return e;
 }
 
@@ -194,19 +164,16 @@ ClipEdge (float *clip, const struct viewplane_s *cplanes)
 }
 
 
-static void
+static inline void
 EmitCached (const struct drawedge_s *cached)
 {
-	struct drawedge_s *e = r_edges++;
-
-	e->owner	= cached->owner;
-	e->top		= cached->top;
-	e->bottom	= cached->bottom;
-	e->u		= cached->u;
-	e->du		= cached->du;
-	e->is_right	= cached->is_right;
-
-	SortIn (e);
+	r_edges->owner		= cached->owner;
+	r_edges->top		= cached->top;
+	r_edges->bottom		= cached->bottom;
+	r_edges->u		= cached->u;
+	r_edges->du		= cached->du;
+	r_edges->is_right	= cached->is_right;
+	r_edges++;
 }
 
 
@@ -215,7 +182,7 @@ R_GenEdges (const unsigned short *edgerefs, int num_edges, const struct viewplan
 {
 	float clipverts[4 * 3];
 	struct medge_s *medge;
-	struct drawedge_s *first_emit, *emit;
+	struct drawedge_s *emit_start, *emit;
 	unsigned short eref;
 	unsigned int cache_idx;
 
@@ -225,15 +192,7 @@ R_GenEdges (const unsigned short *edgerefs, int num_edges, const struct viewplan
 		return 0;
 	}
 
-	first_emit = r_edges;
-
-	sort_head[0].top = -99999;
-	sort_head[0].next = NULL;
-	sort_last[0] = &sort_head[0];
-
-	sort_head[1].top = -99999;
-	sort_head[1].next = NULL;
-	sort_last[1] = &sort_head[1];
+	emit_start = r_edges;
 
 	while (num_edges--)
 	{
@@ -277,31 +236,67 @@ R_GenEdges (const unsigned short *edgerefs, int num_edges, const struct viewplan
 			}
 			else
 			{
-				if ((emit = EmitNewEdge()) == NULL)
+				if ((emit = EmitNewEdge()) != NULL)
+				{
+					emit->owner = medge;
+					medge->cache_index = emit - r_edges_start;
+				}
+				else
 				{
 					/* ignore horizontal edges entirely as
 					 * they never contribute to span
 					 * generation at all */
 					medge->cache_index = 0x80000000 | r_vars.framenum;
 				}
-				else
-				{
-					emit->owner = medge;
-					medge->cache_index = emit - r_edges_start;
-				}
 			}
 		}
 	}
 
 	/* no edges emitted */
-	if (first_emit == r_edges)
+	if (emit_start == r_edges)
 		return 0;
 
-	//TODO: postpone edge y-sorting to here
-	// simply run through first_emit to r_edges, sort into out lists
+	/* now put the new edges into left/right lists, both sorted
+	 * by the top screen coordinate of the edge */
+	{
+		struct drawedge_s head[2];
+		struct drawedge_s *last[2];
+		struct drawedge_s *prev;
+		struct drawedge_s *e;
 
-	out[0] = sort_head[0].next;
-	out[1] = sort_head[1].next;
+		head[0].top = -99999;
+		head[0].next = NULL;
+		last[0] = &head[0];
+
+		head[1].top = -99999;
+		head[1].next = NULL;
+		last[1] = &head[1];
+
+		for (e = emit_start; e != r_edges; e++)
+		{
+			if (e->top >= last[e->is_right]->top)
+			{
+				e->next = NULL;
+				last[e->is_right]->next = e;
+				last[e->is_right] = e;
+			}
+			else
+			{
+				for (	prev = &head[e->is_right];
+					/* Note we're not doing an end-of-list NULL
+					 * check here. That case should be caught by
+					 * the last check above, meaning we will
+					 * never hit the end of the list here. */
+					prev->next->top < e->top;
+					prev = prev->next) {}
+				e->next = prev->next;
+				prev->next = e;
+			}
+		}
+
+		out[0] = head[0].next;
+		out[1] = head[1].next;
+	}
 
 	return 1;
 }
