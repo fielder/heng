@@ -43,7 +43,7 @@ R_PolyGenEdges (struct mpoly_s *poly, const struct viewplane_s *cplanes)
 	if (r_polys == r_polys_end)
 		return; //TODO: flush the pipeline and continue on
 
-	if (R_GenEdges (poly->edges, poly->num_edges, cplanes, edges))
+	if (R_GenEdges(poly->edges, poly->num_edges, cplanes, edges))
 	{
 		struct drawpoly_s *p = r_polys++;
 
@@ -53,18 +53,6 @@ R_PolyGenEdges (struct mpoly_s *poly, const struct viewplane_s *cplanes)
 		p->spans = NULL;
 		p->num_spans = 0;
 	}
-	/*
-	edges = R_GenEdges (poly->edges, poly->num_edges, cplanes);
-	if (edges != NULL)
-	{
-		struct drawpoly_s *p = r_polys++;
-
-		p->edges = edges;
-		p->mpoly = poly;
-		p->spans = NULL;
-		p->num_spans = 0;
-	}
-	*/
 }
 
 
@@ -73,9 +61,22 @@ void
 R_ScanPolyEdges (struct drawpoly_s *p)
 {
 	struct drawedge_s *left_next, *right_next;
+	int v, next_v;
+	int u_l, u_step_l;
+	int u_r, u_step_r;
 
+	p->spans = r_spans;
 
-	while (1)
+	left_next = p->edges[0];
+	right_next = p->edges[1];
+
+	v = 99999;
+	if (left_next != NULL && left_next->top < v)
+		v = left_next->top;
+	if (right_next != NULL && right_next->top < v)
+		v = right_next->top;
+
+	while (left_next != NULL || right_next != NULL)
 	{
 	}
 
@@ -99,33 +100,6 @@ R_ScanPolyEdges (struct drawpoly_s *p)
 			R_ClipAndEmitSpan (v, u>>20, u>>20);
 //if (v >= 0 && v < r_vars.h && (u>>20) >= 0 && (u>>20) < r_vars.w)
 //r_vars.screen[v * r_vars.pitch + (u >> 20)] = 16 * 7;
-	}
-#endif
-
-#if 0
-	struct drawedge_s *next = p->edges;
-	struct drawedge_s *pop, *pop2;
-	int v, next_v;
-	int u_l, u_step_l;
-	int u_r, u_step_r;
-
-	v = next->top;
-	while (1)
-	{
-		if (v == next->top)
-		{
-			pop = next;
-			next = next->next;
-
-			if (next->top == v)
-			{
-				/* 2 edges starting on the same scanline */
-			}
-			else
-			{
-				/* 1 new edge starting on the scanline */
-			}
-		}
 	}
 #endif
 

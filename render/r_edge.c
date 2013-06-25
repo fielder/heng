@@ -16,12 +16,10 @@
 static struct drawedge_s *r_edges_start = NULL;
 static struct drawedge_s *r_edges_end = NULL;
 static struct drawedge_s *r_edges = NULL;
-static struct drawedge_s *r_working = NULL;
 
 static struct drawedge_s sort_head[2];
 static struct drawedge_s *sort_last[2];
 
-static float *r_clip;
 static float *r_p1, *r_p2;
 
 
@@ -141,7 +139,7 @@ EmitNewEdge (void)
 
 
 static int
-ClipEdge (const struct viewplane_s *cplanes)
+ClipEdge (float *clip, const struct viewplane_s *cplanes)
 {
 	float d1, d2, frac;
 
@@ -157,12 +155,12 @@ ClipEdge (const struct viewplane_s *cplanes)
 				/* edge runs from front -> back */
 
 				frac = d1 / (d1 - d2);
-				r_clip[0] = r_p1[0] + frac * (r_p2[0] - r_p1[0]);
-				r_clip[1] = r_p1[1] + frac * (r_p2[1] - r_p1[1]);
-				r_clip[2] = r_p1[2] + frac * (r_p2[2] - r_p1[2]);
+				clip[0] = r_p1[0] + frac * (r_p2[0] - r_p1[0]);
+				clip[1] = r_p1[1] + frac * (r_p2[1] - r_p1[1]);
+				clip[2] = r_p1[2] + frac * (r_p2[2] - r_p1[2]);
 
-				r_p2 = r_clip;
-				r_clip += 3;
+				r_p2 = clip;
+				clip += 3;
 			}
 			else
 			{
@@ -182,12 +180,12 @@ ClipEdge (const struct viewplane_s *cplanes)
 				/* edge runs from back -> front */
 
 				frac = d1 / (d1 - d2);
-				r_clip[0] = r_p1[0] + frac * (r_p2[0] - r_p1[0]);
-				r_clip[1] = r_p1[1] + frac * (r_p2[1] - r_p1[1]);
-				r_clip[2] = r_p1[2] + frac * (r_p2[2] - r_p1[2]);
+				clip[0] = r_p1[0] + frac * (r_p2[0] - r_p1[0]);
+				clip[1] = r_p1[1] + frac * (r_p2[1] - r_p1[1]);
+				clip[2] = r_p1[2] + frac * (r_p2[2] - r_p1[2]);
 
-				r_p1 = r_clip;
-				r_clip += 3;
+				r_p1 = clip;
+				clip += 3;
 			}
 		}
 	}
@@ -217,7 +215,7 @@ R_GenEdges (const unsigned short *edgerefs, int num_edges, const struct viewplan
 {
 	float clipverts[4 * 3];
 	struct medge_s *medge;
-	struct drawedge_s *emit;
+	struct drawedge_s *first_emit, *emit;
 	unsigned short eref;
 	unsigned int cache_idx;
 
@@ -227,7 +225,7 @@ R_GenEdges (const unsigned short *edgerefs, int num_edges, const struct viewplan
 		return 0;
 	}
 
-	r_working = r_edges;
+	first_emit = r_edges;
 
 	sort_head[0].top = -99999;
 	sort_head[0].next = NULL;
@@ -271,9 +269,8 @@ R_GenEdges (const unsigned short *edgerefs, int num_edges, const struct viewplan
 				r_p1 = map.verts[medge->v[0]].xyz;
 				r_p2 = map.verts[medge->v[1]].xyz;
 			}
-			r_clip = clipverts;
 
-			if (!ClipEdge(cplanes))
+			if (!ClipEdge(clipverts, cplanes))
 			{
 				/* any edge off the screen can be ignored */
 				medge->cache_index = 0x80000000 | r_vars.framenum;
@@ -297,10 +294,11 @@ R_GenEdges (const unsigned short *edgerefs, int num_edges, const struct viewplan
 	}
 
 	/* no edges emitted */
-	if (r_working == r_edges)
+	if (first_emit == r_edges)
 		return 0;
 
 	//TODO: postpone edge y-sorting to here
+	// simply run through first_emit to r_edges, sort into out lists
 
 	out[0] = sort_head[0].next;
 	out[1] = sort_head[1].next;
