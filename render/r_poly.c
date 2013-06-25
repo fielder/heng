@@ -60,51 +60,97 @@ R_PolyGenEdges (struct mpoly_s *poly, const struct viewplane_s *cplanes)
 void
 R_ScanPolyEdges (struct drawpoly_s *p)
 {
-#if 1
-	struct drawedge_s *left_next, *right_next;
-	int v, next_v;
-	int u_l, u_step_l;
-	int u_r, u_step_r;
+	struct drawedge_s *left, *right;
+	int v;
+	int l_u, l_du, l_next_v;
+	int r_u, r_du, r_next_v;
+	int next_v;
+
+	/* shut up compiler */
+	l_u = 0;
+	l_du = 0;
+	r_u = 0;
+	r_du = 0;
 
 	p->spans = r_spans;
 
-	left_next = p->edges[0];
-	right_next = p->edges[1];
+	left = p->edges[0];
+	right = p->edges[1];
 
 	v = 99999;
-	if (left_next != NULL && left_next->top < v)
-		v = left_next->top;
-	if (right_next != NULL && right_next->top < v)
-		v = right_next->top;
+	if (left != NULL && left->top < v)
+		v = left->top;
+	if (right != NULL && right->top < v)
+		v = right->top;
 
-//	while (left_next != NULL || right_next != NULL)
-//	{
-//	}
+	l_next_v = v;
+	r_next_v = v;
 
-#endif
-
-#if 0
-	int u, v;
-	struct drawedge_s *e;
-
-	p->spans = r_spans;
-
-// or debug draw by simply extrapolating to the next vert
-	for (e = p->edges[0]; e != NULL; e = e->next)
+	while (left != NULL || right != NULL)
 	{
-		for (v = e->top, u = e->u; v <= e->bottom; v++, u += e->du)
-			R_ClipAndEmitSpan (v, u>>20, u>>20);
-//if (v >= 0 && v < r_vars.h && (u>>20) >= 0 && (u>>20) < r_vars.w)
-//r_vars.screen[v * r_vars.pitch + (u >> 20)] = 16 * 7;
+		if (v == l_next_v)
+		{
+			if (left == NULL)
+			{
+				l_u = 0;
+				l_du = 0;
+				l_next_v = r_vars.h;
+			}
+			else
+			{
+				if (left->top == v)
+				{
+					l_u = left->u;
+					l_du = left->du;
+					l_next_v = left->bottom + 1;
+					left = left->next;
+				}
+				else
+				{
+					l_u = 0;
+					l_du = 0;
+					l_next_v = left->top;
+				}
+			}
+		}
+
+		if (v == r_next_v)
+		{
+			if (right == NULL)
+			{
+				r_u = (r_vars.w - 1) << 20;
+				r_du = 0;
+				r_next_v = r_vars.h;
+			}
+			else
+			{
+				if (right->top == v)
+				{
+					r_u = right->u;
+					r_du = right->du;
+					r_next_v = right->bottom + 1;
+					right = right->next;
+				}
+				else
+				{
+					r_u = (r_vars.w - 1) << 20;
+					r_du = 0;
+					r_next_v = right->top;
+				}
+			}
+		}
+
+		next_v = (l_next_v < r_next_v) ? l_next_v : r_next_v;
+
+		while (v < next_v)
+		{
+			if (r_u > l_u)
+				R_ClipAndEmitSpan (v, l_u >> 20, r_u >> 20);
+			l_u += l_du;
+			r_u += r_du;
+			v++;
+		}
 	}
-	for (e = p->edges[1]; e != NULL; e = e->next)
-	{
-		for (v = e->top, u = e->u; v <= e->bottom; v++, u += e->du)
-			R_ClipAndEmitSpan (v, u>>20, u>>20);
-//if (v >= 0 && v < r_vars.h && (u>>20) >= 0 && (u>>20) < r_vars.w)
-//r_vars.screen[v * r_vars.pitch + (u >> 20)] = 16 * 7;
-	}
-#endif
 
 	p->num_spans = r_spans - p->spans;
 }

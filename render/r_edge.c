@@ -46,8 +46,6 @@ R_BeginEdgeFrame (void *buf, int buflen)
 static struct drawedge_s *
 EmitNewEdge (void)
 {
-	struct drawedge_s *e;
-
 	float u1_f, v1_f;
 	int v1_i;
 
@@ -73,6 +71,9 @@ EmitNewEdge (void)
 	v2_f = r_vars.center_y - scale * out[1];
 	v2_i = floor(v2_f + 0.5);
 
+//TODO: adjust and floor the final u, to properly match up which
+//	pixel center the span will cover?
+
 	if (v1_i == v2_i)
 	{
 		/* horizontal edges should be cached like fully rejected
@@ -81,30 +82,26 @@ EmitNewEdge (void)
 	}
 	else if (v1_i < v2_i)
 	{
-		e = r_edges;
-		r_edges++;
-
 		du = (u2_f - u1_f) / (v2_f - v1_f);
-		e->u = (u1_f + du * (v1_i + 0.5 - v1_f)) * 0x100000;
-		e->du = (du) * 0x100000;
-		e->top = v1_i;
-		e->bottom = v2_i - 1;
-		e->is_right = 0;
+		r_edges->u = (u1_f + du * (v1_i + 0.5 - v1_f)) * 0x100000;
+		r_edges->du = (du) * 0x100000;
+		r_edges->top = v1_i;
+		r_edges->bottom = v2_i - 1;
+		r_edges->is_right = 0;
+		r_edges++;
 	}
 	else
 	{
-		e = r_edges;
-		r_edges++;
-
 		du = (u1_f - u2_f) / (v1_f - v2_f);
-		e->u = (u2_f + du * (v2_i + 0.5 - v2_f)) * 0x100000;
-		e->du = (du) * 0x100000;
-		e->top = v2_i;
-		e->bottom = v1_i - 1;
-		e->is_right = 1;
+		r_edges->u = (u2_f + du * (v2_i + 0.5 - v2_f)) * 0x100000;
+		r_edges->du = (du) * 0x100000;
+		r_edges->top = v2_i;
+		r_edges->bottom = v1_i - 1;
+		r_edges->is_right = 1;
+		r_edges++;
 	}
 
-	return e;
+	return r_edges - 1;
 }
 
 
