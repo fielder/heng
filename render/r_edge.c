@@ -18,15 +18,11 @@ static struct drawedge_s *r_edges_end = NULL;
 static struct drawedge_s *r_edges = NULL;
 static struct drawedge_s *r_working = NULL;
 
-static struct drawedge_s sort_head;
-static struct drawedge_s *sort_last;
+static struct drawedge_s sort_head[2];
+static struct drawedge_s *sort_last[2];
 
 static float *r_clip;
 static float *r_p1, *r_p2;
-static float *r_left_enter, *r_left_exit;
-static float *r_right_enter, *r_right_exit;
-static int r_left_touched, r_right_touched;
-static int r_isclipped;
 
 
 void
@@ -55,16 +51,16 @@ R_BeginEdgeFrame (void *buf, int buflen)
 static void
 SortIn (struct drawedge_s *e)
 {
-	if (e->top >= sort_last->top)
+	if (e->top >= sort_last[e->is_right]->top)
 	{
 		e->next = NULL;
-		sort_last->next = e;
-		sort_last = e;
+		sort_last[e->is_right]->next = e;
+		sort_last[e->is_right] = e;
 	}
 	else
 	{
 		struct drawedge_s *prev;
-		for (	prev = &sort_head;
+		for (	prev = &sort_head[e->is_right];
 			/* Note we're not doing an end-of-list NULL
 			 * check here. That case should be caught by
 			 * the sort_last check above, meaning we will
@@ -123,6 +119,7 @@ EmitNewEdge (void)
 		e->du = (du) * 0x100000;
 		e->top = v1_i;
 		e->bottom = v2_i - 1;
+		e->is_right = 0;
 	}
 	else
 	{
@@ -134,6 +131,7 @@ EmitNewEdge (void)
 		e->du = (du) * 0x100000;
 		e->top = v2_i;
 		e->bottom = v1_i - 1;
+		e->is_right = 1;
 	}
 
 	SortIn (e);
@@ -143,102 +141,14 @@ EmitNewEdge (void)
 
 
 static int
-ClipLeftRight (const struct viewplane_s *planes)
+ClipEdge (const struct viewplane_s *cplanes)
 {
 	float d1, d2, frac;
 
-	for (; planes != NULL; planes = planes->next)
+	for (; cplanes != NULL; cplanes = cplanes->next)
 	{
-		d1 = Vec_Dot (planes->normal, r_p1) - planes->dist;
-		d2 = Vec_Dot (planes->normal, r_p2) - planes->dist;
-
-		if (d1 >= 0.0)
-		{
-			if (d2 < 0.0)
-			{
-				/* edge runs from front -> back */
-
-				frac = d1 / (d1 - d2);
-				r_clip[0] = r_p1[0] + frac * (r_p2[0] - r_p1[0]);
-				r_clip[1] = r_p1[1] + frac * (r_p2[1] - r_p1[1]);
-				r_clip[2] = r_p1[2] + frac * (r_p2[2] - r_p1[2]);
-
-				if (planes == &r_vars.vplanes[VPLANE_LEFT])
-				{
-					r_left_exit[0] = r_clip[0];
-					r_left_exit[1] = r_clip[1];
-					r_left_exit[2] = r_clip[2];
-					r_left_touched++;
-				}
-				else
-				{
-					r_right_exit[0] = r_clip[0];
-					r_right_exit[1] = r_clip[1];
-					r_right_exit[2] = r_clip[2];
-					r_right_touched++;
-				}
-
-				r_p2 = r_clip;
-				r_clip += 3;
-				r_isclipped = 1;
-			}
-			else
-			{
-				/* both vertices on the front side */
-			}
-		}
-		else
-		{
-			if (d2 < 0.0)
-			{
-				/* both vertices behind a plane; the
-				 * edge is fully clipped away */
-				return 0;
-			}
-			else
-			{
-				/* edge runs from back -> front */
-
-				frac = d1 / (d1 - d2);
-				r_clip[0] = r_p1[0] + frac * (r_p2[0] - r_p1[0]);
-				r_clip[1] = r_p1[1] + frac * (r_p2[1] - r_p1[1]);
-				r_clip[2] = r_p1[2] + frac * (r_p2[2] - r_p1[2]);
-
-				if (planes == &r_vars.vplanes[VPLANE_LEFT])
-				{
-					r_left_enter[0] = r_clip[0];
-					r_left_enter[1] = r_clip[1];
-					r_left_enter[2] = r_clip[2];
-					r_left_touched++;
-				}
-				else
-				{
-					r_right_enter[0] = r_clip[0];
-					r_right_enter[1] = r_clip[1];
-					r_right_enter[2] = r_clip[2];
-					r_right_touched++;
-				}
-
-				r_p1 = r_clip;
-				r_clip += 3;
-				r_isclipped = 1;
-			}
-		}
-	}
-
-	return 1;
-}
-
-
-static int
-ClipTopBottom (const struct viewplane_s *planes)
-{
-	float d1, d2, frac;
-
-	for (; planes != NULL; planes = planes->next)
-	{
-		d1 = Vec_Dot (planes->normal, r_p1) - planes->dist;
-		d2 = Vec_Dot (planes->normal, r_p2) - planes->dist;
+		d1 = Vec_Dot (cplanes->normal, r_p1) - cplanes->dist;
+		d2 = Vec_Dot (cplanes->normal, r_p2) - cplanes->dist;
 
 		if (d1 >= 0.0)
 		{
@@ -253,7 +163,6 @@ ClipTopBottom (const struct viewplane_s *planes)
 
 				r_p2 = r_clip;
 				r_clip += 3;
-				r_isclipped = 1;
 			}
 			else
 			{
@@ -279,7 +188,6 @@ ClipTopBottom (const struct viewplane_s *planes)
 
 				r_p1 = r_clip;
 				r_clip += 3;
-				r_isclipped = 1;
 			}
 		}
 	}
@@ -298,16 +206,16 @@ EmitCached (const struct drawedge_s *cached)
 	e->bottom	= cached->bottom;
 	e->u		= cached->u;
 	e->du		= cached->du;
+	e->is_right	= cached->is_right;
 
 	SortIn (e);
 }
 
 
-struct drawedge_s *
-R_GenEdges (const unsigned short *edgerefs, int num_edges, struct viewplane_s *clips[2])
+int
+R_GenEdges (const unsigned short *edgerefs, int num_edges, const struct viewplane_s *cplanes, struct drawedge_s *out[2])
 {
 	float clipverts[4 * 3];
-	float enter_l[3], enter_r[3], exit_l[3], exit_r[3];
 	struct medge_s *medge;
 	struct drawedge_s *emit;
 	unsigned short eref;
@@ -316,28 +224,24 @@ R_GenEdges (const unsigned short *edgerefs, int num_edges, struct viewplane_s *c
 	if (r_edges + num_edges + 2 > r_edges_end)
 	{
 		//TODO: reset the pipeline and continue
-		return NULL;
+		return 0;
 	}
 
 	r_working = r_edges;
 
-	r_left_enter = enter_l;
-	r_left_exit = exit_l;
-	r_right_enter = enter_r;
-	r_right_exit = exit_r;
-	r_left_touched = 0;
-	r_right_touched = 0;
+	sort_head[0].top = -99999;
+	sort_head[0].next = NULL;
+	sort_last[0] = &sort_head[0];
 
-	sort_head.top = -99999;
-	sort_head.next = NULL;
-	sort_last = &sort_head;
+	sort_head[1].top = -99999;
+	sort_head[1].next = NULL;
+	sort_last[1] = &sort_head[1];
 
 	while (num_edges--)
 	{
 		eref = *edgerefs++;
 		medge = &map.edges[eref & 0x7fff];
 		cache_idx = medge->cache_index & 0x7fffffff;
-		r_isclipped = 0;
 
 		if ((medge->cache_index & 0x80000000) && cache_idx == r_vars.framenum)
 		{
@@ -369,77 +273,37 @@ R_GenEdges (const unsigned short *edgerefs, int num_edges, struct viewplane_s *c
 			}
 			r_clip = clipverts;
 
-			if (clips[CPLANES_LEFT_RIGHT] != NULL)
+			if (!ClipEdge(cplanes))
 			{
-				if (!ClipLeftRight(clips[CPLANES_LEFT_RIGHT]))
-				{
-					/* we can cache edges fully off
-					 * the left/right because they
-					 * don't contribute to the enter
-					 * or exit points */
-					medge->cache_index = 0x80000000 | r_vars.framenum;
-					continue;
-				}
-			}
-
-			if (clips[CPLANES_TOP_BOTTOM] != NULL)
-			{
-				if (!ClipTopBottom(clips[CPLANES_TOP_BOTTOM]))
-					continue;
-			}
-
-			emit = EmitNewEdge ();
-			if (emit == NULL)
-			{
-				/* ignore horizontal edges entirely as
-				 * they never contribute to span
-				 * generation at all */
+				/* any edge off the screen can be ignored */
 				medge->cache_index = 0x80000000 | r_vars.framenum;
 			}
 			else
 			{
-				emit->owner = medge;
-				if (r_isclipped)
+				if ((emit = EmitNewEdge()) == NULL)
 				{
-					/* set so the next time we visit
-					 * this edge the index check
-					 * will fail when checking if
-					 * cached */
-					medge->cache_index = 0x7fffffff;
+					/* ignore horizontal edges entirely as
+					 * they never contribute to span
+					 * generation at all */
+					medge->cache_index = 0x80000000 | r_vars.framenum;
 				}
 				else
+				{
+					emit->owner = medge;
 					medge->cache_index = emit - r_edges_start;
+				}
 			}
 		}
 	}
 
-	if (r_left_touched)
-	{
-		r_p1 = r_left_enter;
-		r_p2 = r_left_exit;
-		r_clip = clipverts;
-		if (ClipTopBottom(clips[CPLANES_TOP_BOTTOM]))
-		{
-			emit = EmitNewEdge ();
-			if (emit != NULL)
-				emit->owner = NULL;
-		}
-	}
-
-	if (r_right_touched)
-	{
-		r_p1 = r_right_enter;
-		r_p2 = r_right_exit;
-		r_clip = clipverts;
-		if (ClipTopBottom(clips[CPLANES_TOP_BOTTOM]))
-		{
-			emit = EmitNewEdge ();
-			if (emit != NULL)
-				emit->owner = NULL;
-		}
-	}
+	/* no edges emitted */
+	if (r_working == r_edges)
+		return 0;
 
 	//TODO: postpone edge y-sorting to here
 
-	return sort_head.next;
+	out[0] = sort_head[0].next;
+	out[1] = sort_head[1].next;
+
+	return 1;
 }

@@ -21,22 +21,39 @@ def _showFPS():
 
 
 def _debug():
+    print "=" * 64
     print "pos   :", hvars.pos
     print "angles:", hvars.angles
-    print ""
     hvars.c_api.R_SetDebug(1)
+    print "-" * 64
+    print ""
 
 def _debug2():
-#   pos = (59.06465037961378, 38.75378027843006, 287.1767908883728)
-#   angles = (0.18768782339804116, 0.0, 0.0)
-    pos = (50.12752310306103, 127.2341878620401, 285.1381228419543)
-    angles = (1.5707963267948966, 6.1702843211911835, 0.0)
+    # clip off right: out2.zip
+    if sys.argv[2] == "out2.zip":
+        pos = (50.12752310306103, 64.0, 285.1381228419543)
+        #angles = (1.5707963267948966, 6.2733678301370945, 0.0)
+        #angles = (1.533258762115288, 0.559596191420654, 0.0)
+        angles = (1.5707963267948966, 0.716675824100113, 0.0)
+
+        # facing opposite so edge goes off bottom
+        #angles = (1.5707963267948966, 0.716675824100113, 0.0)
+        angles = (1.5707963267948966, 2.586905200690284, 0.0)
+
+
+    # clip off left: out.zip
+    if sys.argv[2] == "out.zip":
+        pos = (114.24407283616527, 74.9087274022559, 31.681621420802887)
+        angles = (-0.8637828681396933, 3.175953823238353, 0.0)
 
     r_cam.setCamera(pos, angles)
 
 
 if __name__ == "__main__":
-    sys.argv = [sys.argv[0]] + ["utils/doom.wad", "out2.zip"]
+    if 1:
+        sys.argv = [sys.argv[0]] + ["utils/doom.wad", "out.zip"]
+    else:
+        sys.argv = [sys.argv[0]] + ["utils/doom.wad", "out2.zip"]
     if len(sys.argv) != 3:
         print "usage: %s <iwad> <map file>" % sys.argv[0]
         sys.exit(0)

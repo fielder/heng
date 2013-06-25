@@ -36,14 +36,25 @@ R_BeginPolyFrame (void *buf, int buflen)
 
 
 void
-R_PolyGenEdges (struct mpoly_s *poly, struct viewplane_s *clips[2])
+R_PolyGenEdges (struct mpoly_s *poly, const struct viewplane_s *cplanes)
 {
-	struct drawedge_s *edges;
+	struct drawedge_s *edges[2];
 
 	if (r_polys == r_polys_end)
 		return; //TODO: flush the pipeline and continue on
 
-	edges = R_GenEdges (poly->edges, poly->num_edges, clips);
+	if (R_GenEdges (poly->edges, poly->num_edges, cplanes, edges))
+	{
+		struct drawpoly_s *p = r_polys++;
+
+		p->edges[0] = edges[0];
+		p->edges[1] = edges[1];
+		p->mpoly = poly;
+		p->spans = NULL;
+		p->num_spans = 0;
+	}
+	/*
+	edges = R_GenEdges (poly->edges, poly->num_edges, cplanes);
 	if (edges != NULL)
 	{
 		struct drawpoly_s *p = r_polys++;
@@ -53,6 +64,7 @@ R_PolyGenEdges (struct mpoly_s *poly, struct viewplane_s *clips[2])
 		p->spans = NULL;
 		p->num_spans = 0;
 	}
+	*/
 }
 
 
@@ -60,19 +72,36 @@ R_PolyGenEdges (struct mpoly_s *poly, struct viewplane_s *clips[2])
 void
 R_ScanPolyEdges (struct drawpoly_s *p)
 {
+	struct drawedge_s *left_next, *right_next;
+
+
+	while (1)
+	{
+	}
+
+#if 0
 	int u, v;
 	struct drawedge_s *e;
 
 	p->spans = r_spans;
 
 // or debug draw by simply extrapolating to the next vert
-	for (e = p->edges; e != NULL; e = e->next)
+	for (e = p->edges[0]; e != NULL; e = e->next)
 	{
 		for (v = e->top, u = e->u; v <= e->bottom; v++, u += e->du)
 			R_ClipAndEmitSpan (v, u>>20, u>>20);
 //if (v >= 0 && v < r_vars.h && (u>>20) >= 0 && (u>>20) < r_vars.w)
 //r_vars.screen[v * r_vars.pitch + (u >> 20)] = 16 * 7;
 	}
+	for (e = p->edges[1]; e != NULL; e = e->next)
+	{
+		for (v = e->top, u = e->u; v <= e->bottom; v++, u += e->du)
+			R_ClipAndEmitSpan (v, u>>20, u>>20);
+//if (v >= 0 && v < r_vars.h && (u>>20) >= 0 && (u>>20) < r_vars.w)
+//r_vars.screen[v * r_vars.pitch + (u >> 20)] = 16 * 7;
+	}
+#endif
+
 #if 0
 	struct drawedge_s *next = p->edges;
 	struct drawedge_s *pop, *pop2;

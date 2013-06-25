@@ -17,19 +17,17 @@ R_DrawWorld (void)
 	char edgebuf[0x8000];
 	char polybuf[0x8000];
 
-	struct viewplane_s *clips[2];
+	struct viewplane_s *cplanes;
 
 	R_BeginSpanFrame (spanbuf, sizeof(spanbuf));
 	R_BeginEdgeFrame (edgebuf, sizeof(edgebuf));
 	R_BeginPolyFrame (polybuf, sizeof(polybuf));
 
-	r_vars.vplanes[VPLANE_TOP].next = &r_vars.vplanes[VPLANE_BOTTOM];
-	r_vars.vplanes[VPLANE_BOTTOM].next = NULL;
-	clips[CPLANES_TOP_BOTTOM] = &r_vars.vplanes[VPLANE_TOP];
-
-	r_vars.vplanes[VPLANE_LEFT].next = &r_vars.vplanes[VPLANE_RIGHT];
-	r_vars.vplanes[VPLANE_RIGHT].next = NULL;
-	clips[CPLANES_LEFT_RIGHT] = &r_vars.vplanes[VPLANE_LEFT];
+	cplanes = &r_vars.vplanes[0];
+	r_vars.vplanes[0].next = &r_vars.vplanes[1];
+	r_vars.vplanes[1].next = &r_vars.vplanes[2];
+	r_vars.vplanes[2].next = &r_vars.vplanes[3];
+	r_vars.vplanes[3].next = NULL;
 
 	DrawGrid (1024, 16 * 7 - 2);
 
@@ -47,7 +45,7 @@ R_DrawWorld (void)
 			if (p->side != on_back)
 				continue;
 
-			R_PolyGenEdges (p, clips);
+			R_PolyGenEdges (p, cplanes);
 		}
 
 		while (cluster_start != r_polys)

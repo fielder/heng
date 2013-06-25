@@ -12,7 +12,7 @@ extern void
 R_BeginPolyFrame (void *buf, int buflen);
 
 extern void
-R_PolyGenEdges (struct mpoly_s *poly, struct viewplane_s *clips[2]);
+R_PolyGenEdges (struct mpoly_s *poly, const struct viewplane_s *cplanes);
 
 extern void
 R_ScanPolyEdges (struct drawpoly_s *p);

@@ -5,19 +5,6 @@
 
 #define BACKFACE_DIST 0.01
 
-enum
-{
-	CPLANES_TOP_BOTTOM,
-	CPLANES_LEFT_RIGHT,
-};
-
-enum
-{
-	EDGE_LR_LEFT = 0x1,
-	EDGE_LR_RIGHT = 0x2,
-	EDGE_LR_VISIBLE = 0x4,
-};
-
 /* clipped and projected edge */
 struct drawedge_s
 {
@@ -26,6 +13,8 @@ struct drawedge_s
 
 	int top, bottom;
 	int u, du; /* 12.20 fixed-point format */
+
+	int is_right;
 };
 
 
@@ -40,7 +29,7 @@ struct drawspan_s
 /* draw polys */
 struct drawpoly_s
 {
-	struct drawedge_s *edges;
+	struct drawedge_s *edges[2]; /* left/right on the screen */
 
 	struct drawspan_s *spans;
 	int num_spans;

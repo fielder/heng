@@ -9,7 +9,7 @@ R_EdgeSetup (void);
 extern void
 R_BeginEdgeFrame (void *buf, int buflen);
 
-extern struct drawedge_s *
-R_GenEdges (const unsigned short *edgerefs, int num_edges, struct viewplane_s *clips[2]);
+extern int
+R_GenEdges (const unsigned short *edgerefs, int num_edges, const struct viewplane_s *cplanes, struct drawedge_s *out[2]);
 
 #endif /* __R_EDGE_H__ */
