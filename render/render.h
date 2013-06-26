@@ -50,7 +50,7 @@ DrawGrid (int size, int color);
 /* r_bsp.c */
 
 extern void
-R_DrawWorld (void);
+BSP_DrawWorld (void);
 
 
 /* ========================================================== */
@@ -59,16 +59,16 @@ R_DrawWorld (void);
 extern struct drawspan_s *r_spans;
 
 extern void
-R_SpanSetup (void);
+S_SpanSetup (void);
 
 extern void
-R_ClipAndEmitSpan (short y, short x1, short x2);
+S_ClipAndEmitSpan (short y, short x1, short x2);
 
 extern void
-R_BeginSpanFrame (void *buf, int buflen);
+S_BeginSpanFrame (void *buf, int buflen);
 
 extern void
-R_RenderGSpans (void);
+S_RenderGSpans (void);
 
 
 /* ========================================================== */
@@ -77,29 +77,29 @@ R_RenderGSpans (void);
 extern struct drawpoly_s *r_polys;
 
 extern void
-R_BeginPolyFrame (void *buf, int buflen);
+P_BeginPolyFrame (void *buf, int buflen);
 
 extern void
-R_PolyGenEdges (struct mpoly_s *poly, const struct viewplane_s *cplanes);
+P_PolyGenEdges (struct mpoly_s *poly, const struct viewplane_s *cplanes);
 
 extern void
-R_ScanPolyEdges (struct drawpoly_s *p);
+P_ScanPolyEdges (struct drawpoly_s *p);
 
 extern void
-R_RenderPolys (void);
+P_RenderPolys (void);
 
 
 /* ========================================================== */
 /* r_edge.c */
 
 extern void
-R_EdgeSetup (void);
+E_EdgeSetup (void);
 
 extern void
-R_BeginEdgeFrame (void *buf, int buflen);
+E_BeginEdgeFrame (void *buf, int buflen);
 
 extern int
-R_GenEdges (const unsigned short *edgerefs, int num_edges, const struct viewplane_s *cplanes, struct drawedge_s *out[2]);
+E_GenEdges (const unsigned short *edgerefs, int num_edges, const struct viewplane_s *cplanes, struct drawedge_s *out[2]);
 
 
 /* ========================================================== */
@@ -113,5 +113,6 @@ DrawPixmap(const void *pixels, int w, int h, int x, int y);
 
 extern void
 DrawSpriteToPixmap (const void *lump, void *out);
+
 
 #endif /* __RENDER_H__ */

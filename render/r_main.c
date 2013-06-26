@@ -25,8 +25,8 @@ R_SetupBuffer (uint8_t *buf, int w, int h, int pitch)
 
 	r_vars.framenum = 0;
 
-	R_SpanSetup ();
-	R_EdgeSetup ();
+	S_SpanSetup ();
+	E_EdgeSetup ();
 }
 
 
@@ -142,5 +142,5 @@ R_Refresh (void)
 
 	CalcCamera ();
 
-	R_DrawWorld ();
+	BSP_DrawWorld ();
 }

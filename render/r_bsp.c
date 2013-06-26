@@ -6,7 +6,7 @@
 
 
 void
-R_DrawWorld (void)
+BSP_DrawWorld (void)
 {
 	char spanbuf[0x8000];
 	char edgebuf[0x8000];
@@ -14,9 +14,9 @@ R_DrawWorld (void)
 
 	struct viewplane_s *cplanes;
 
-	R_BeginSpanFrame (spanbuf, sizeof(spanbuf));
-	R_BeginEdgeFrame (edgebuf, sizeof(edgebuf));
-	R_BeginPolyFrame (polybuf, sizeof(polybuf));
+	S_BeginSpanFrame (spanbuf, sizeof(spanbuf));
+	E_BeginEdgeFrame (edgebuf, sizeof(edgebuf));
+	P_BeginPolyFrame (polybuf, sizeof(polybuf));
 
 	cplanes = &r_vars.vplanes[0];
 	r_vars.vplanes[0].next = &r_vars.vplanes[1];
@@ -40,17 +40,17 @@ R_DrawWorld (void)
 			if (p->side != on_back)
 				continue;
 
-			R_PolyGenEdges (p, cplanes);
+			P_PolyGenEdges (p, cplanes);
 		}
 
 		while (cluster_start != r_polys)
-			R_ScanPolyEdges (cluster_start++);
+			P_ScanPolyEdges (cluster_start++);
 	}
 
-	R_RenderPolys ();
+	P_RenderPolys ();
 
 	if (0)
-		R_RenderGSpans();
+		S_RenderGSpans();
 
 	// - edge drawing for all polys in the leaf and all polys on
 	//   the parent node

@@ -7,7 +7,7 @@
 #include "render.h"
 
 static void
-R_RenderPolySpans (struct drawpoly_s *p);
+RenderPolySpans (struct drawpoly_s *p);
 
 
 struct drawpoly_s *r_polys = NULL;
@@ -16,7 +16,7 @@ static struct drawpoly_s *r_polys_end = NULL;
 
 
 void
-R_BeginPolyFrame (void *buf, int buflen)
+P_BeginPolyFrame (void *buf, int buflen)
 {
 	/* prepare the given poly buffer */
 	uintptr_t p = (uintptr_t)buf;
@@ -33,14 +33,14 @@ R_BeginPolyFrame (void *buf, int buflen)
 
 
 void
-R_PolyGenEdges (struct mpoly_s *poly, const struct viewplane_s *cplanes)
+P_PolyGenEdges (struct mpoly_s *poly, const struct viewplane_s *cplanes)
 {
 	struct drawedge_s *edges[2];
 
 	if (r_polys == r_polys_end)
 		return; //TODO: flush the pipeline and continue on
 
-	if (R_GenEdges(poly->edges, poly->num_edges, cplanes, edges))
+	if (E_GenEdges(poly->edges, poly->num_edges, cplanes, edges))
 	{
 		struct drawpoly_s *p = r_polys++;
 
@@ -55,7 +55,7 @@ R_PolyGenEdges (struct mpoly_s *poly, const struct viewplane_s *cplanes)
 
 //TODO: always check for negative-len span before emitting
 void
-R_ScanPolyEdges (struct drawpoly_s *p)
+P_ScanPolyEdges (struct drawpoly_s *p)
 {
 	struct drawedge_s *left, *right;
 	int v;
@@ -142,7 +142,7 @@ R_ScanPolyEdges (struct drawpoly_s *p)
 		while (v < next_v)
 		{
 			if (r_u > l_u)
-				R_ClipAndEmitSpan (v, l_u >> 20, r_u >> 20);
+				S_ClipAndEmitSpan (v, l_u >> 20, r_u >> 20);
 			l_u += l_du;
 			r_u += r_du;
 			v++;
@@ -154,17 +154,17 @@ R_ScanPolyEdges (struct drawpoly_s *p)
 
 
 void
-R_RenderPolys (void)
+P_RenderPolys (void)
 {
 	struct drawpoly_s *p;
 
 	for (p = r_polys_start; p != r_polys; p++)
-		R_RenderPolySpans (p);
+		RenderPolySpans (p);
 }
 
 
 static void
-R_RenderPolySpans (struct drawpoly_s *p)
+RenderPolySpans (struct drawpoly_s *p)
 {
 	struct drawspan_s *span;
 	int i, color;

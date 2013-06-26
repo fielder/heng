@@ -20,7 +20,7 @@ static struct gspan_s *r_gspans_pool = NULL;
 
 
 void
-R_SpanSetup (void)
+S_SpanSetup (void)
 {
 	struct gspan_s *alloced;
 	int i, count;
@@ -54,7 +54,7 @@ R_SpanSetup (void)
 
 
 static void
-R_PushSpan (short y, short x1, short x2)
+PushSpan (short y, short x1, short x2)
 {
 	if (r_spans != r_spans_end)
 	{
@@ -67,7 +67,7 @@ R_PushSpan (short y, short x1, short x2)
 
 
 void
-R_ClipAndEmitSpan (short y, short x1, short x2)
+S_ClipAndEmitSpan (short y, short x1, short x2)
 {
 	struct gspan_s *head = &r_gspans[y];
 	struct gspan_s *gs, *next, *new;
@@ -104,7 +104,7 @@ R_ClipAndEmitSpan (short y, short x1, short x2)
 		{
 			/* the gspan lies entirely within the span,
 			 * emit a drawable span */
-			R_PushSpan (y, gs->left, gs->right);
+			PushSpan (y, gs->left, gs->right);
 			next = gs->next;
 			gs->prev->next = gs->next;
 			gs->next->prev = gs->prev;
@@ -135,7 +135,7 @@ R_ClipAndEmitSpan (short y, short x1, short x2)
 
 
 void
-R_BeginSpanFrame (void *buf, int buflen)
+S_BeginSpanFrame (void *buf, int buflen)
 {
 	/* prepare the given span buffer */
 	uintptr_t p = (uintptr_t)buf;
@@ -183,7 +183,7 @@ R_BeginSpanFrame (void *buf, int buflen)
  * be any gspans visible.
  */
 void
-R_RenderGSpans (void)
+S_RenderGSpans (void)
 {
 	const struct gspan_s *gs;
 	int i;

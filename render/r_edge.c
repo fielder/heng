@@ -20,13 +20,13 @@ static float *r_p1, *r_p2;
 
 
 void
-R_EdgeSetup (void)
+E_EdgeSetup (void)
 {
 }
 
 
 void
-R_BeginEdgeFrame (void *buf, int buflen)
+E_BeginEdgeFrame (void *buf, int buflen)
 {
 	/* prepare the given edge buffer */
 	uintptr_t p = (uintptr_t)buf;
@@ -174,7 +174,7 @@ EmitCached (const struct drawedge_s *cached)
 
 
 int
-R_GenEdges (const unsigned short *edgerefs, int num_edges, const struct viewplane_s *cplanes, struct drawedge_s *out[2])
+E_GenEdges (const unsigned short *edgerefs, int num_edges, const struct viewplane_s *cplanes, struct drawedge_s *out[2])
 {
 	float clipverts[4 * 3];
 	struct medge_s *medge;
