@@ -12,8 +12,6 @@
 
 struct r_vars_s r_vars;
 
-static bool cam_changed = false;
-
 
 static void
 CalcCamera (void);
@@ -58,7 +56,6 @@ R_SetCamera (float pos[3], float angles[3])
 {
 	Vec_Copy (pos, r_vars.pos);
 	Vec_Copy (angles, r_vars.angles);
-	cam_changed = true;
 }
 
 
@@ -145,13 +142,9 @@ R_SetDebug (int debug)
 void
 R_Refresh (void)
 {
-	if (cam_changed)
-	{
-		CalcCamera ();
-		cam_changed = false;
-	}
-
 	r_vars.framenum++;
+
+	CalcCamera ();
 
 	R_DrawWorld ();
 }
