@@ -12,20 +12,23 @@ BSP_DrawWorld (void)
 	char edgebuf[0x8000];
 	char polybuf[0x8000];
 
-	struct viewplane_s *cplanes;
+	struct viewplane_s *cplanes[2];
 
 	S_BeginSpanFrame (spanbuf, sizeof(spanbuf));
 	E_BeginEdgeFrame (edgebuf, sizeof(edgebuf));
 	P_BeginPolyFrame (polybuf, sizeof(polybuf));
 
-	cplanes = &r_vars.vplanes[0];
-	r_vars.vplanes[0].next = &r_vars.vplanes[1];
-	r_vars.vplanes[1].next = &r_vars.vplanes[2];
-	r_vars.vplanes[2].next = &r_vars.vplanes[3];
-	r_vars.vplanes[3].next = NULL;
+	r_vars.vplanes[VPLANE_LEFT].next = &r_vars.vplanes[VPLANE_RIGHT];
+	r_vars.vplanes[VPLANE_RIGHT].next = NULL;
+	cplanes[0] = &r_vars.vplanes[VPLANE_LEFT];
+
+	r_vars.vplanes[VPLANE_TOP].next = &r_vars.vplanes[VPLANE_BOTTOM];
+	r_vars.vplanes[VPLANE_BOTTOM].next = NULL;
+	cplanes[1] = &r_vars.vplanes[VPLANE_TOP];
 
 	DrawGrid (1024, 16 * 7 - 2);
 
+	if (1)
 	{
 		struct drawpoly_s *cluster_start;
 		struct mpoly_s *p;

@@ -33,7 +33,7 @@ P_BeginPolyFrame (void *buf, int buflen)
 
 
 void
-P_PolyGenEdges (struct mpoly_s *poly, const struct viewplane_s *cplanes)
+P_PolyGenEdges (struct mpoly_s *poly, struct viewplane_s *cplanes[2])
 {
 	struct drawedge_s *edges[2];
 
@@ -54,8 +54,36 @@ P_PolyGenEdges (struct mpoly_s *poly, const struct viewplane_s *cplanes)
 
 
 //TODO: always check for negative-len span before emitting
+
+
 void
 P_ScanPolyEdges (struct drawpoly_s *p)
+{
+	int u, v;
+	struct drawedge_s *e;
+
+	p->spans = r_spans;
+
+// or debug draw by simply extrapolating to the next vert
+	for (e = p->edges[0]; e != NULL; e = e->next)
+	{
+		for (v = e->top, u = e->u; v <= e->bottom; v++, u += e->du)
+			S_ClipAndEmitSpan (v, u>>20, u>>20);
+//			PutPixel (u >> 20, v, 16 * 7);
+	}
+	for (e = p->edges[1]; e != NULL; e = e->next)
+	{
+		for (v = e->top, u = e->u; v <= e->bottom; v++, u += e->du)
+			S_ClipAndEmitSpan (v, u>>20, u>>20);
+//			PutPixel (u >> 20, v, 16 * 7);
+	}
+
+	p->num_spans = r_spans - p->spans;
+}
+
+
+void
+P_ScanPolyEdges2 (struct drawpoly_s *p)
 {
 	struct drawedge_s *left, *right;
 	int v;
@@ -89,6 +117,7 @@ P_ScanPolyEdges (struct drawpoly_s *p)
 		{
 			if (left == NULL)
 			{
+//TODO: shouldn't happen?
 				l_u = 0;
 				l_du = 0;
 				l_next_v = r_vars.h;
@@ -104,6 +133,7 @@ P_ScanPolyEdges (struct drawpoly_s *p)
 				}
 				else
 				{
+//TODO: shouldn't happen?
 					l_u = 0;
 					l_du = 0;
 					l_next_v = left->top;
@@ -115,7 +145,8 @@ P_ScanPolyEdges (struct drawpoly_s *p)
 		{
 			if (right == NULL)
 			{
-				r_u = (r_vars.w - 1) << 20;
+//TODO: shouldn't happen?
+				r_u = (r_vars.w - 1) * 0x100000;
 				r_du = 0;
 				r_next_v = r_vars.h;
 			}
@@ -130,7 +161,8 @@ P_ScanPolyEdges (struct drawpoly_s *p)
 				}
 				else
 				{
-					r_u = (r_vars.w - 1) << 20;
+//TODO: shouldn't happen?
+					r_u = (r_vars.w - 1) * 0x100000;
 					r_du = 0;
 					r_next_v = right->top;
 				}

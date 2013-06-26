@@ -8,6 +8,14 @@
 
 
 void
+PutPixel (int x, int y, int c)
+{
+	if (x >= 0 && x < r_vars.w && y >= 0 && y < r_vars.h)
+		r_vars.screen[y * r_vars.pitch + x] = c;
+}
+
+
+void
 ClearScreen (void)
 {
 	int y;

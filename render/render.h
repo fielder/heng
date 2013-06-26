@@ -31,6 +31,9 @@ R_Refresh (void);
 /* r_misc.c */
 
 extern void
+PutPixel (int x, int y, int c);
+
+extern void
 ClearScreen (void);
 
 extern void
@@ -80,7 +83,7 @@ extern void
 P_BeginPolyFrame (void *buf, int buflen);
 
 extern void
-P_PolyGenEdges (struct mpoly_s *poly, const struct viewplane_s *cplanes);
+P_PolyGenEdges (struct mpoly_s *poly, struct viewplane_s *cplanes[2]);
 
 extern void
 P_ScanPolyEdges (struct drawpoly_s *p);
@@ -99,7 +102,10 @@ extern void
 E_BeginEdgeFrame (void *buf, int buflen);
 
 extern int
-E_GenEdges (const unsigned short *edgerefs, int num_edges, const struct viewplane_s *cplanes, struct drawedge_s *out[2]);
+E_GenEdges (	const unsigned short *edgerefs,
+		int num_edges,
+		struct viewplane_s *cplanes[2],
+		struct drawedge_s *out[2]);
 
 
 /* ========================================================== */
