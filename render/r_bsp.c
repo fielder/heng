@@ -3,11 +3,6 @@
 
 #include "map.h"
 #include "render.h"
-#include "r_misc.h"
-#include "r_span.h"
-#include "r_edge.h"
-#include "r_poly.h"
-#include "r_bsp.h"
 
 
 void

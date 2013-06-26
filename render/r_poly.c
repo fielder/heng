@@ -3,11 +3,8 @@
 
 #include "cdefs.h"
 
-#include "render.h"
 #include "r_defs.h"
-#include "r_span.h"
-#include "r_edge.h"
-#include "r_poly.h"
+#include "render.h"
 
 static void
 R_RenderPolySpans (struct drawpoly_s *p);

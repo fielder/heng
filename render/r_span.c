@@ -2,9 +2,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#include "render.h"
 #include "r_defs.h"
-#include "r_span.h"
+#include "render.h"
 
 /* green span */
 struct gspan_s

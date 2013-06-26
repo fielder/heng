@@ -3,58 +3,13 @@
 
 #include <stdint.h>
 
-struct viewplane_s
-{
-	float normal[3];
-	float dist;
+#include "r_defs.h"
 
-	int minmax_lookup[3];
 
-	struct viewplane_s *next;
-};
-
-enum
-{
-	VPLANE_LEFT,
-	VPLANE_RIGHT,
-	VPLANE_TOP,
-	VPLANE_BOTTOM,
-};
-
-struct r_vars_s
-{
-	int debug;
-
-	/* draw buffer */
-	int w, h, pitch;
-	uint8_t *screen;
-
-	int framenum;
-
-	/* camera defs */
-	float center_x;
-	float center_y;
-
-	float fov_x; /* radians */
-	float fov_y; /* radians */
-
-	float dist;
-
-	float pos[3];
-
-	float angles[3]; /* radians */
-
-	float xform[3][3]; /* world-to-camera */
-
-	float left[3];
-	float up[3];
-	float forward[3];
-
-	struct viewplane_s vplanes[4];
-};
+/* ========================================================== */
+/* r_main.c */
 
 extern struct r_vars_s r_vars;
-
 
 extern void
 R_SetupBuffer (uint8_t *buf, int w, int h, int pitch);
@@ -70,5 +25,81 @@ R_SetDebug (int debug);
 
 extern void
 R_Refresh (void);
+
+
+/* ========================================================== */
+/* r_misc.c */
+
+extern void
+ClearScreen (void);
+
+extern void
+DrawPalette (void);
+
+extern void
+DrawLine (int x1, int y1, int x2, int y2, int c);
+
+extern void
+DrawLine3D (const float p1[3], const float p2[3], int c);
+
+extern void
+DrawGrid (int size, int color);
+
+
+/* ========================================================== */
+/* r_bsp.c */
+
+extern void
+R_DrawWorld (void);
+
+
+/* ========================================================== */
+/* r_span.c */
+
+extern struct drawspan_s *r_spans;
+
+extern void
+R_SpanSetup (void);
+
+extern void
+R_ClipAndEmitSpan (short y, short x1, short x2);
+
+extern void
+R_BeginSpanFrame (void *buf, int buflen);
+
+extern void
+R_RenderGSpans (void);
+
+
+/* ========================================================== */
+/* r_poly.c */
+
+extern struct drawpoly_s *r_polys;
+
+extern void
+R_BeginPolyFrame (void *buf, int buflen);
+
+extern void
+R_PolyGenEdges (struct mpoly_s *poly, const struct viewplane_s *cplanes);
+
+extern void
+R_ScanPolyEdges (struct drawpoly_s *p);
+
+extern void
+R_RenderPolys (void);
+
+
+/* ========================================================== */
+/* r_edge.c */
+
+extern void
+R_EdgeSetup (void);
+
+extern void
+R_BeginEdgeFrame (void *buf, int buflen);
+
+extern int
+R_GenEdges (const unsigned short *edgerefs, int num_edges, const struct viewplane_s *cplanes, struct drawedge_s *out[2]);
+
 
 #endif /* __RENDER_H__ */

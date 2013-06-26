@@ -3,8 +3,8 @@
 
 #include "cdefs.h"
 #include "vec.h"
+
 #include "render.h"
-#include "r_misc.h"
 
 
 void

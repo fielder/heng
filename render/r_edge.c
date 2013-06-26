@@ -6,9 +6,8 @@
 #include "vec.h"
 
 #include "map.h"
-#include "render.h"
 #include "r_defs.h"
-#include "r_edge.h"
+#include "render.h"
 
 //TODO: would like to associate portals w/ leaves so we can better
 // ignore some portals when choosing to draw them on nodes

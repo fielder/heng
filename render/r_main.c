@@ -1,14 +1,10 @@
 #include <stdint.h>
 #include <math.h>
 
-#include "cdefs.h"
 #include "bswap.h"
 #include "vec.h"
 
 #include "render.h"
-#include "r_span.h"
-#include "r_edge.h"
-#include "r_bsp.h"
 
 struct r_vars_s r_vars;
 
