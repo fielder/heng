@@ -2,7 +2,6 @@
 #include <string.h>
 
 #include "render.h"
-#include "r_sprite.h"
 
 struct r_patch_s
 {

@@ -102,4 +102,16 @@ extern int
 R_GenEdges (const unsigned short *edgerefs, int num_edges, const struct viewplane_s *cplanes, struct drawedge_s *out[2]);
 
 
+/* ========================================================== */
+/* r_sprite.c */
+
+extern void
+DrawSprite (const void *lump, int x, int y);
+
+extern void
+DrawPixmap(const void *pixels, int w, int h, int x, int y);
+
+extern void
+DrawSpriteToPixmap (const void *lump, void *out);
+
 #endif /* __RENDER_H__ */
