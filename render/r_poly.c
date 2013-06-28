@@ -118,58 +118,18 @@ P_ScanPolyEdges (struct drawpoly_s *p)
 	{
 		if (v == l_next_v)
 		{
-			if (left == NULL)
-			{
-//TODO: shouldn't happen?
-				l_u = 0;
-				l_du = 0;
-				l_next_v = r_vars.h;
-			}
-			else
-			{
-				if (left->top == v)
-				{
-					l_u = left->u;
-					l_du = left->du;
-					l_next_v = left->bottom + 1;
-					left = left->next;
-				}
-				else
-				{
-//TODO: shouldn't happen?
-					l_u = 0;
-					l_du = 0;
-					l_next_v = left->top;
-				}
-			}
+			l_u = left->u;
+			l_du = left->du;
+			l_next_v = left->bottom + 1;
+			left = left->next;
 		}
 
 		if (v == r_next_v)
 		{
-			if (right == NULL)
-			{
-//TODO: shouldn't happen?
-				r_u = (r_vars.w - 1) * 0x100000;
-				r_du = 0;
-				r_next_v = r_vars.h;
-			}
-			else
-			{
-				if (right->top == v)
-				{
-					r_u = right->u;
-					r_du = right->du;
-					r_next_v = right->bottom + 1;
-					right = right->next;
-				}
-				else
-				{
-//TODO: shouldn't happen?
-					r_u = (r_vars.w - 1) * 0x100000;
-					r_du = 0;
-					r_next_v = right->top;
-				}
-			}
+			r_u = right->u;
+			r_du = right->du;
+			r_next_v = right->bottom + 1;
+			right = right->next;
 		}
 
 		next_v = (l_next_v < r_next_v) ? l_next_v : r_next_v;
