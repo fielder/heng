@@ -76,9 +76,6 @@ EmitNewEdge (void)
 	v2_f = r_vars.center_y - scale * out[1];
 	v2_i = floor(v2_f + 0.5);
 
-//TODO: adjust and floor the final u, to properly match up which
-//	pixel center the span will cover?
-
 	if (v1_i == v2_i)
 	{
 		return NULL;
@@ -89,6 +86,8 @@ EmitNewEdge (void)
 		r_edges->u = (u1_f + du * (v1_i + 0.5 - v1_f)) * 0x100000 + (1 << 19);
 		r_edges->du = (du) * 0x100000;
 		r_edges->top = v1_i;
+		/* our fill rule says the bottom vertex/pixel goes to
+		 * the next poly */
 		r_edges->bottom = v2_i - 1;
 		r_edges->is_right = 0;
 		r_edges++;
@@ -99,6 +98,8 @@ EmitNewEdge (void)
 		r_edges->u = (u2_f + du * (v2_i + 0.5 - v2_f)) * 0x100000 + (1 << 19);
 		r_edges->du = (du) * 0x100000;
 		r_edges->top = v2_i;
+		/* our fill rule says the bottom vertex/pixel goes to
+		 * the next poly */
 		r_edges->bottom = v1_i - 1;
 		r_edges->is_right = 1;
 		r_edges++;

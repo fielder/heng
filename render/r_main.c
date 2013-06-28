@@ -80,7 +80,8 @@ CalcCamera (void)
 	/* set up view planes */
 
 /* debug: adjust view plane inwards */
-#define ADJ (2.0 * (M_PI / 180.0))
+//#define ADJ (0.125 * (M_PI / 180.0))
+#define ADJ 0
 
 	/* left */
 	p = &r_vars.vplanes[VPLANE_LEFT];

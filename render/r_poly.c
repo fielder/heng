@@ -116,6 +116,7 @@ P_ScanPolyEdges (struct drawpoly_s *p)
 
 	while (left != NULL || right != NULL)
 	{
+//TODO: add debug to check if v runs off the top/bottom
 		if (v == l_next_v)
 		{
 			l_u = left->u;
@@ -126,7 +127,9 @@ P_ScanPolyEdges (struct drawpoly_s *p)
 
 		if (v == r_next_v)
 		{
-			r_u = right->u;
+			/* our fill rule says an edge pixel goes to the
+			 * poly on the right */
+			r_u = right->u - (1 << 20);
 			r_du = right->du;
 			r_next_v = right->bottom + 1;
 			right = right->next;

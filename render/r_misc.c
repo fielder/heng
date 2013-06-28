@@ -145,8 +145,10 @@ ProjectPoint (const float p[3], int *u, int *v)
 	//	This should never happen when drawing polys, as the
 	//	backface culling should do so on an epsilon, so an edge
 	//	will never run almost straight through the eye.
-	if (*u < 0 || *u >= r_vars.w || *v < 0 || *v >= r_vars.h)
-		return 0;
+	if (*u < 0) *u = 0;
+	if (*u >= r_vars.w) *u = r_vars.w - 1;
+	if (*v < 0) *v = 0;
+	if (*v >= r_vars.h) *v = r_vars.h - 1;
 
 	return 1;
 }

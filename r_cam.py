@@ -5,6 +5,8 @@ import hio
 import hvars
 from utils import vec
 
+fov = 90.0
+
 c_vec3 = ctypes.c_float * 3
 
 movespeed = 32.0
@@ -21,7 +23,7 @@ def init():
     hvars.up = vec.Vec3()
     hvars.forward = vec.Vec3()
 
-    hvars.fov_x = math.radians(90.0)
+    hvars.fov_x = math.radians(fov)
     dist = (hvars.WIDTH / 2.0) / math.tan(hvars.fov_x / 2.0)
     hvars.fov_y = 2.0 * math.atan((hvars.HEIGHT / 2.0) / dist)
     hvars.c_api.R_SetupProjection(ctypes.c_float(hvars.fov_x))

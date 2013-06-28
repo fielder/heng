@@ -1,7 +1,7 @@
 RENDER_SO = "./render.so"
 
-WIDTH = 320
-HEIGHT = 240
+WIDTH = 320 * 1
+HEIGHT = 240 * 1
 
 # camera stuff
 PITCH = 0
