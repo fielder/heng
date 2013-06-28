@@ -86,7 +86,7 @@ EmitNewEdge (void)
 	else if (v1_i < v2_i)
 	{
 		du = (u2_f - u1_f) / (v2_f - v1_f);
-		r_edges->u = (u1_f + du * (v1_i + 0.5 - v1_f)) * 0x100000;
+		r_edges->u = (u1_f + du * (v1_i + 0.5 - v1_f)) * 0x100000 + (1 << 19);
 		r_edges->du = (du) * 0x100000;
 		r_edges->top = v1_i;
 		r_edges->bottom = v2_i - 1;
@@ -96,7 +96,7 @@ EmitNewEdge (void)
 	else
 	{
 		du = (u1_f - u2_f) / (v1_f - v2_f);
-		r_edges->u = (u2_f + du * (v2_i + 0.5 - v2_f)) * 0x100000;
+		r_edges->u = (u2_f + du * (v2_i + 0.5 - v2_f)) * 0x100000 + (1 << 19);
 		r_edges->du = (du) * 0x100000;
 		r_edges->top = v2_i;
 		r_edges->bottom = v1_i - 1;
