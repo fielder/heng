@@ -83,7 +83,7 @@ extern void
 P_BeginPolyFrame (void *buf, int buflen);
 
 extern void
-P_PolyGenEdges (struct mpoly_s *poly, struct viewplane_s *cplanes[2]);
+P_PolyGenEdges (struct mpoly_s *poly, struct viewplane_s *leftright[2], struct viewplane_s *topbottom);
 
 extern void
 P_ScanPolyEdges (struct drawpoly_s *p);
@@ -104,7 +104,8 @@ E_BeginEdgeFrame (void *buf, int buflen);
 extern int
 E_GenEdges (	const unsigned short *edgerefs,
 		int num_edges,
-		struct viewplane_s *cplanes[2],
+		struct viewplane_s *leftright[2],
+		struct viewplane_s *topbottom,
 		struct drawedge_s *out[2]);
 
 

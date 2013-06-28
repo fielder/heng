@@ -14,6 +14,13 @@ enum
 	VPLANE_BOTTOM,
 };
 
+enum
+{
+	CLIPFLAG_LEFT	= 0x1,
+	CLIPFLAG_RIGHT	= 0x2,
+	CLIPFLAG_TOP	= 0x4,
+	CLIPFLAG_BOTTOM	= 0x8,
+};
 
 struct viewplane_s
 {

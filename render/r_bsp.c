@@ -5,6 +5,9 @@
 #include "render.h"
 
 
+//TODO: would like to associate portals w/ leaves so we can better
+// ignore some portals when choosing to draw them on nodes
+
 void
 BSP_DrawWorld (void)
 {
@@ -12,19 +15,19 @@ BSP_DrawWorld (void)
 	char edgebuf[0x8000];
 	char polybuf[0x8000];
 
-	struct viewplane_s *cplanes[2];
+	struct viewplane_s *leftright[2];
+	struct viewplane_s *topbottom;
 
 	S_BeginSpanFrame (spanbuf, sizeof(spanbuf));
 	E_BeginEdgeFrame (edgebuf, sizeof(edgebuf));
 	P_BeginPolyFrame (polybuf, sizeof(polybuf));
 
-	r_vars.vplanes[VPLANE_LEFT].next = &r_vars.vplanes[VPLANE_RIGHT];
-	r_vars.vplanes[VPLANE_RIGHT].next = NULL;
-	cplanes[0] = &r_vars.vplanes[VPLANE_LEFT];
+	leftright[0] = &r_vars.vplanes[VPLANE_LEFT];
+	leftright[1] = &r_vars.vplanes[VPLANE_RIGHT];
 
 	r_vars.vplanes[VPLANE_TOP].next = &r_vars.vplanes[VPLANE_BOTTOM];
 	r_vars.vplanes[VPLANE_BOTTOM].next = NULL;
-	cplanes[1] = &r_vars.vplanes[VPLANE_TOP];
+	topbottom = &r_vars.vplanes[VPLANE_TOP];
 
 	DrawGrid (1024, 16 * 7 - 2);
 
@@ -43,7 +46,7 @@ BSP_DrawWorld (void)
 			if (p->side != on_back)
 				continue;
 
-			P_PolyGenEdges (p, cplanes);
+			P_PolyGenEdges (p, leftright, topbottom);
 		}
 
 		while (cluster_start != r_polys)

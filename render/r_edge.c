@@ -9,9 +9,6 @@
 #include "r_defs.h"
 #include "render.h"
 
-//TODO: would like to associate portals w/ leaves so we can better
-// ignore some portals when choosing to draw them on nodes
-
 static struct drawedge_s *r_edges_start = NULL;
 static struct drawedge_s *r_edges_end = NULL;
 static struct drawedge_s *r_edges = NULL;
@@ -19,21 +16,13 @@ static struct drawedge_s *r_edges = NULL;
 static float *r_p1, *r_p2;
 static float *r_clip;
 
-enum
-{
-	CLIP_LEFT_ENTER		= 0x1,
-	CLIP_LEFT_EXIT		= 0x2,
-	CLIP_RIGHT_ENTER	= 0x4,
-	CLIP_RIGHT_EXIT		= 0x8,
-};
-
+static bool r_create_left;
 static float r_left_enter[3];
 static float r_left_exit[3];
 
+static bool r_create_right;
 static float r_right_enter[3];
 static float r_right_exit[3];
-
-static int r_clipflags;
 
 
 void
@@ -92,8 +81,6 @@ EmitNewEdge (void)
 
 	if (v1_i == v2_i)
 	{
-		/* horizontal edges should be cached like fully rejected
-		 * edges */
 		return NULL;
 	}
 	else if (v1_i < v2_i)
@@ -131,28 +118,6 @@ EmitCached (const struct drawedge_s *cached)
 	r_edges->du		= cached->du;
 	r_edges->is_right	= cached->is_right;
 	r_edges++;
-}
-
-
-static void
-EmitExtraToTop_L (float pos[3])
-{
-	//...
-}
-static void
-EmitExtraToBottom_L (float pos[3])
-{
-	//...
-}
-static void
-EmitExtraToTop_R (float pos[3])
-{
-	//...
-}
-static void
-EmitExtraToBottom_R (float pos[3])
-{
-	//...
 }
 
 
@@ -212,122 +177,217 @@ ClipTopBottom (const struct viewplane_s *cplanes)
 }
 
 
-//TODO: Never cache an edge clipped off the left/right and passed onto
-//	the next clipping stage.
-//	The next time around the enter/exit points need to be recalced.
+#define FRONT(dist) ((dist) >= 0.0)
 
 static int
-ClipLeftRight (const struct viewplane_s *cplanes, int *flags)
+ClipLeftRight (	struct viewplane_s *left,
+		struct viewplane_s *right)
 {
-	float d1, d2, frac;
-	int newflags = 0x0;
+	float *isect_l, *isect_r;
+	float d1_l = 1.0, d2_l = 1.0;
+	float d1_r = 1.0, d2_r = 1.0;
+	float frac;
+	int s1_l, s2_l;
+	int s1_r, s2_r;
+	int all;
 
-	*flags = 0x0;
-
-	for (; cplanes != NULL; cplanes = cplanes->next)
+	if (left != NULL)
 	{
-		d1 = Vec_Dot (cplanes->normal, r_p1) - cplanes->dist;
-		d2 = Vec_Dot (cplanes->normal, r_p2) - cplanes->dist;
+		d1_l = Vec_Dot(left->normal, r_p1) - left->dist;
+		d2_l = Vec_Dot(left->normal, r_p2) - left->dist;
+	}
 
-		if (d1 >= 0.0)
+	if (right != NULL)
+	{
+		d1_r = Vec_Dot(right->normal, r_p1) - right->dist;
+		d2_r = Vec_Dot(right->normal, r_p2) - right->dist;
+	}
+
+	s1_l = FRONT(d1_l);
+	s2_l = FRONT(d2_l);
+	s1_r = FRONT(d1_r);
+	s2_r = FRONT(d2_r);
+
+	all = (s1_l << 0) | (s2_l << 1) | (s1_r << 2) | (s2_r << 3);
+
+	/* all in front unclipped */
+	if (all == 0xf)
+		return 1;
+	/* behind a plane and unclipped */
+	if (all == 0x0 || all == 0x3 || all == 0xc)
+		return 0;
+
+	/* crosses the left plane */
+	if (s1_l ^ s2_l)
+	{
+		if (s1_l) /* front -> back */
 		{
-			if (d2 < 0.0)
-			{
-				/* edge runs from front -> back */
+			isect_l = r_left_exit;
+			r_create_left = true;
 
-				frac = d1 / (d1 - d2);
-				r_clip[0] = r_p1[0] + frac * (r_p2[0] - r_p1[0]);
-				r_clip[1] = r_p1[1] + frac * (r_p2[1] - r_p1[1]);
-				r_clip[2] = r_p1[2] + frac * (r_p2[2] - r_p1[2]);
+			frac = d1_l / (d1_l - d2_l);
+			isect_l[0] = r_p1[0] + frac * (r_p2[0] - r_p1[0]);
+			isect_l[1] = r_p1[1] + frac * (r_p2[1] - r_p1[1]);
+			isect_l[2] = r_p1[2] + frac * (r_p2[2] - r_p1[2]);
 
-				if (cplanes == &r_vars.vplanes[VPLANE_LEFT])
-				{
-					/* left exit */
-					r_left_exit[0] = r_clip[0];
-					r_left_exit[1] = r_clip[1];
-					r_left_exit[2] = r_clip[2];
-					newflags |= CLIP_LEFT_EXIT;
-				}
-				else
-				{
-					/* right exit */
-					r_right_exit[0] = r_clip[0];
-					r_right_exit[1] = r_clip[1];
-					r_right_exit[2] = r_clip[2];
-					newflags |= CLIP_RIGHT_EXIT;
-				}
-
-				r_p2 = r_clip;
-				r_clip += 3;
-			}
-			else
+			if ((s1_r | s2_r) == 0x0)
 			{
-				/* both vertices on the front side */
-			}
-		}
-		else
-		{
-			if (d2 < 0.0)
-			{
-				/* both vertices behind a plane; the
-				 * edge is fully clipped away */
-				/* Note we return without updating the
-				 * global left/right clip flags */
+				/* cut by the left plane, but all behind the right
+				 * all we did was update r_left_exit */
 				return 0;
 			}
-			else
+			else if (s1_r & s2_r)
 			{
-				/* edge runs from back -> front */
+				/* cut by the left plane, but all in front of the
+				 * right plane */
+				r_p2 = isect_l;
+				return 1;
+			}
+		}
+		else /* back -> front */
+		{
+			isect_l = r_left_enter;
+			r_create_left = true;
 
-				frac = d1 / (d1 - d2);
-				r_clip[0] = r_p1[0] + frac * (r_p2[0] - r_p1[0]);
-				r_clip[1] = r_p1[1] + frac * (r_p2[1] - r_p1[1]);
-				r_clip[2] = r_p1[2] + frac * (r_p2[2] - r_p1[2]);
+			frac = d1_l / (d1_l - d2_l);
+			isect_l[0] = r_p1[0] + frac * (r_p2[0] - r_p1[0]);
+			isect_l[1] = r_p1[1] + frac * (r_p2[1] - r_p1[1]);
+			isect_l[2] = r_p1[2] + frac * (r_p2[2] - r_p1[2]);
 
-				if (cplanes == &r_vars.vplanes[VPLANE_LEFT])
-				{
-					/* left enter */
-					r_left_enter[0] = r_clip[0];
-					r_left_enter[1] = r_clip[1];
-					r_left_enter[2] = r_clip[2];
-					newflags |= CLIP_LEFT_ENTER;
-				}
-				else
-				{
-					/* right enter */
-					r_right_enter[0] = r_clip[0];
-					r_right_enter[1] = r_clip[1];
-					r_right_enter[2] = r_clip[2];
-					newflags |= CLIP_RIGHT_ENTER;
-				}
-
-				r_p1 = r_clip;
-				r_clip += 3;
+			if ((s1_r | s2_r) == 0x0)
+			{
+				/* cut by the left plane, but all behind the right
+				 * all we did was update r_left_enter */
+				return 0;
+			}
+			else if (s1_r & s2_r)
+			{
+				/* cut by the left plane, but all in front of the
+				 * right plane */
+				r_p1 = isect_l;
+				return 1;
 			}
 		}
 	}
 
-//TODO handle the case where we clip against both planes, but in teh same direction
+	/* crosses the right plane */
+	if (s1_r ^ s2_r)
+	{
+		if (s1_r) /* front -> back */
+		{
+			isect_r = r_right_exit;
+			r_create_right = true;
 
-	*flags = newflags;
-	r_clipflags |= newflags;
+			frac = d1_r / (d1_r - d2_r);
+			isect_r[0] = r_p1[0] + frac * (r_p2[0] - r_p1[0]);
+			isect_r[1] = r_p1[1] + frac * (r_p2[1] - r_p1[1]);
+			isect_r[2] = r_p1[2] + frac * (r_p2[2] - r_p1[2]);
+
+			if ((s1_l | s2_l) == 0x0)
+			{
+				/* cut by the right plane, but all behind the left
+				 * all we did was update r_right_exit */
+				return 0;
+			}
+			else if (s1_l & s2_l)
+			{
+				/* cut by the right plane, but all in front of the
+				 * left plane */
+				r_p2 = isect_r;
+				return 1;
+			}
+		}
+		else /* back -> front */
+		{
+			isect_r = r_right_enter;
+			r_create_right = true;
+
+			frac = d1_r / (d1_r - d2_r);
+			isect_r[0] = r_p1[0] + frac * (r_p2[0] - r_p1[0]);
+			isect_r[1] = r_p1[1] + frac * (r_p2[1] - r_p1[1]);
+			isect_r[2] = r_p1[2] + frac * (r_p2[2] - r_p1[2]);
+
+			if ((s1_l | s2_l) == 0x0)
+			{
+				/* cut by the right plane, but all behind the left
+				 * all we did was update r_right_enter */
+				return 0;
+			}
+			else if (s1_l & s2_l)
+			{
+				/* cut by the right plane, but all in front of the
+				 * left plane */
+				r_p1 = isect_r;
+				return 1;
+			}
+		}
+	}
+
+	if (all == 0xa)
+	{
+		/* edge starts off behind both planes (behind the
+		 * viewpoint), and ends in front of both planes */
+		if (FRONT(Vec_Dot(left->normal, r_right_enter) - left->dist))
+			r_p1 = r_right_enter;
+		else
+			r_p1 = r_left_enter;
+	}
+	else if (all == 0x5)
+	{
+		/* edge starts off in front of both planes and ends
+		 * behind both planes (behind the veiwpoint) */
+		if (FRONT(Vec_Dot(left->normal, r_right_exit) - left->dist))
+			r_p2 = r_right_exit;
+		else
+			r_p2 = r_left_exit;
+	}
+	else if (all == 0x6)
+	{
+		/* edge runs from left-to-right across both planes */
+		if (FRONT(Vec_Dot(left->normal, r_right_exit) - left->dist))
+		{
+			r_p1 = r_left_enter;
+			r_p2 = r_right_exit;
+		}
+		else
+			return 0;
+	}
+	else if (all == 0x9)
+	{
+		/* edge runs from right-to-left across both planes */
+		if (FRONT(Vec_Dot(left->normal, r_right_enter) - left->dist))
+		{
+			r_p1 = r_right_enter;
+			r_p2 = r_left_exit;
+		}
+		else
+			return 0;
+	}
 
 	return 1;
 }
+
+#undef FRONT
 
 
 int
 E_GenEdges (	const unsigned short *edgerefs,
 		int num_edges,
-		struct viewplane_s *cplanes[2],
+		struct viewplane_s *leftright[2],
+		struct viewplane_s *topbottom,
 		struct drawedge_s *out[2])
 {
 	float clipverts[4 * 3];
 	struct medge_s *medge;
-	struct drawedge_s *emit_start, *emit;
+	struct drawedge_s *emit_start;
 	unsigned short eref;
+#if 0
+	struct drawedge_s *emit;
+#endif
+#if 0
 	unsigned int cache_idx;
 	int e_lr_flags;
+#endif
 
 	if (r_edges + num_edges + 2 > r_edges_end)
 	{
@@ -336,13 +396,14 @@ E_GenEdges (	const unsigned short *edgerefs,
 	}
 
 	emit_start = r_edges;
-
-	r_clipflags = 0x0;
+	r_create_left = false;
+	r_create_right = false;
 
 	while (num_edges--)
 	{
 		eref = *edgerefs++;
 		medge = &map.edges[eref & 0x7fff];
+#if 0
 		cache_idx = medge->cache_index & 0x7fffffff;
 
 		if ((medge->cache_index & 0x80000000) && cache_idx == r_vars.framenum)
@@ -356,12 +417,8 @@ E_GenEdges (	const unsigned short *edgerefs,
 			EmitCached (&r_edges_start[cache_idx]);
 		}
 		else
+#endif
 		{
-			//TODO: probably can complety get rid of
-			// edge directions if we don't care about
-			// knowing which poly is on the left/right
-			// of an emitted edge; that's really only
-			// needed for Quake's edge sorting/scanning
 			if ((eref & 0x8000) == 0x8000)
 			{
 				r_p1 = map.verts[medge->v[1]].xyz;
@@ -374,6 +431,18 @@ E_GenEdges (	const unsigned short *edgerefs,
 			}
 			r_clip = clipverts;
 
+#if 1
+			if (leftright[0] != NULL || leftright[1] != NULL)
+			{
+				if (!ClipLeftRight(leftright[0], leftright[1]))
+					continue;
+			}
+
+			if (ClipTopBottom(topbottom))
+				EmitNewEdge ();
+#endif
+
+#if 0
 			if (!ClipLeftRight(cplanes[0], &e_lr_flags))
 			{
 				/* Edges fully off the left/right aren't used.
@@ -407,37 +476,26 @@ E_GenEdges (	const unsigned short *edgerefs,
 						medge->cache_index = 0x80000000 | r_vars.framenum;
 				}
 			}
+#endif
 		}
 	}
 
-	e_lr_flags = r_clipflags & (CLIP_LEFT_ENTER | CLIP_LEFT_EXIT);
-	if (e_lr_flags)
+	if (r_create_left)
 	{
-		if (e_lr_flags == CLIP_LEFT_ENTER)
-			EmitExtraToTop_L (r_left_enter);
-		else if (e_lr_flags == CLIP_LEFT_EXIT)
-			EmitExtraToBottom_L (r_left_exit);
-		else
-		{
-			r_p1 = r_left_exit;
-			r_p2 = r_left_enter;
+		r_p1 = r_left_exit;
+		r_p2 = r_left_enter;
+		r_clip = clipverts;
+		if (ClipTopBottom(topbottom))
 			EmitNewEdge ();
-		}
 	}
 
-	e_lr_flags = r_clipflags & (CLIP_RIGHT_ENTER | CLIP_RIGHT_EXIT);
-	if (e_lr_flags)
+	if (r_create_right)
 	{
-		if (e_lr_flags == CLIP_RIGHT_ENTER)
-			EmitExtraToTop_R (r_right_enter);
-		else if (e_lr_flags == CLIP_RIGHT_EXIT)
-			EmitExtraToBottom_R (r_right_exit);
-		else
-		{
-			r_p1 = r_right_exit;
-			r_p2 = r_right_enter;
+		r_p1 = r_right_exit;
+		r_p2 = r_right_enter;
+		r_clip = clipverts;
+		if (ClipTopBottom(topbottom))
 			EmitNewEdge ();
-		}
 	}
 
 	/* no edges emitted */
@@ -571,4 +629,168 @@ ClipEdge (float *clip, const struct viewplane_s *cplanes)
 					medge->cache_index = 0x80000000 | r_vars.framenum;
 				}
 			}
+#endif
+
+
+#if 0
+//TODO: Never cache an edge clipped off the left/right and passed onto
+//	the next clipping stage.
+//	The next time around the enter/exit points need to be recalced.
+
+static int
+ClipLeftRight (const struct viewplane_s *cplanes, int *flags)
+{
+	float d1, d2, frac;
+	int newflags = 0x0;
+
+	*flags = 0x0;
+
+	for (; cplanes != NULL; cplanes = cplanes->next)
+	{
+		d1 = Vec_Dot (cplanes->normal, r_p1) - cplanes->dist;
+		d2 = Vec_Dot (cplanes->normal, r_p2) - cplanes->dist;
+
+		if (d1 >= 0.0)
+		{
+			if (d2 < 0.0)
+			{
+				/* edge runs from front -> back */
+
+				frac = d1 / (d1 - d2);
+				r_clip[0] = r_p1[0] + frac * (r_p2[0] - r_p1[0]);
+				r_clip[1] = r_p1[1] + frac * (r_p2[1] - r_p1[1]);
+				r_clip[2] = r_p1[2] + frac * (r_p2[2] - r_p1[2]);
+
+				if (cplanes == &r_vars.vplanes[VPLANE_LEFT])
+				{
+					/* left exit */
+					r_left_exit[0] = r_clip[0];
+					r_left_exit[1] = r_clip[1];
+					r_left_exit[2] = r_clip[2];
+					newflags |= CLIP_LEFT_EXIT;
+				}
+				else
+				{
+					/* right exit */
+					r_right_exit[0] = r_clip[0];
+					r_right_exit[1] = r_clip[1];
+					r_right_exit[2] = r_clip[2];
+					newflags |= CLIP_RIGHT_EXIT;
+				}
+
+				r_p2 = r_clip;
+				r_clip += 3;
+			}
+			else
+			{
+				/* both vertices on the front side */
+			}
+		}
+		else
+		{
+			if (d2 < 0.0)
+			{
+				/* both vertices behind a plane; the
+				 * edge is fully clipped away */
+				/* Note we return without updating the
+				 * global left/right clip flags */
+				return 0;
+			}
+			else
+			{
+				/* edge runs from back -> front */
+
+				frac = d1 / (d1 - d2);
+				r_clip[0] = r_p1[0] + frac * (r_p2[0] - r_p1[0]);
+				r_clip[1] = r_p1[1] + frac * (r_p2[1] - r_p1[1]);
+				r_clip[2] = r_p1[2] + frac * (r_p2[2] - r_p1[2]);
+
+				if (cplanes == &r_vars.vplanes[VPLANE_LEFT])
+				{
+					/* left enter */
+					r_left_enter[0] = r_clip[0];
+					r_left_enter[1] = r_clip[1];
+					r_left_enter[2] = r_clip[2];
+					newflags |= CLIP_LEFT_ENTER;
+				}
+				else
+				{
+					/* right enter */
+					r_right_enter[0] = r_clip[0];
+					r_right_enter[1] = r_clip[1];
+					r_right_enter[2] = r_clip[2];
+					newflags |= CLIP_RIGHT_ENTER;
+				}
+
+				r_p1 = r_clip;
+				r_clip += 3;
+			}
+		}
+	}
+
+//TODO handle the case where we clip against both planes, but in teh same direction
+
+	*flags = newflags;
+	r_clipflags |= newflags;
+
+	return 1;
+}
+#endif
+
+
+#if 0
+static int
+ClipTopBottom (const struct viewplane_s *plane)
+{
+	float d1, d2, frac;
+
+	for (; cplanes != NULL; cplanes = cplanes->next)
+	{
+		d1 = Vec_Dot (cplanes->normal, r_p1) - cplanes->dist;
+		d2 = Vec_Dot (cplanes->normal, r_p2) - cplanes->dist;
+
+		if (d1 >= 0.0)
+		{
+			if (d2 < 0.0)
+			{
+				/* edge runs from front -> back */
+
+				frac = d1 / (d1 - d2);
+				r_clip[0] = r_p1[0] + frac * (r_p2[0] - r_p1[0]);
+				r_clip[1] = r_p1[1] + frac * (r_p2[1] - r_p1[1]);
+				r_clip[2] = r_p1[2] + frac * (r_p2[2] - r_p1[2]);
+
+				r_p2 = r_clip;
+				r_clip += 3;
+			}
+			else
+			{
+				/* both vertices on the front side */
+			}
+		}
+		else
+		{
+			if (d2 < 0.0)
+			{
+				/* both vertices behind a plane; the
+				 * edge is fully clipped away */
+				return 0;
+			}
+			else
+			{
+				/* edge runs from back -> front */
+
+				frac = d1 / (d1 - d2);
+				r_clip[0] = r_p1[0] + frac * (r_p2[0] - r_p1[0]);
+				r_clip[1] = r_p1[1] + frac * (r_p2[1] - r_p1[1]);
+				r_clip[2] = r_p1[2] + frac * (r_p2[2] - r_p1[2]);
+
+				r_p1 = r_clip;
+				r_clip += 3;
+			}
+		}
+	}
+
+	return 1;
+}
 #endif

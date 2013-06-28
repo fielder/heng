@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #include "cdefs.h"
 
@@ -33,14 +34,16 @@ P_BeginPolyFrame (void *buf, int buflen)
 
 
 void
-P_PolyGenEdges (struct mpoly_s *poly, struct viewplane_s *cplanes[2])
+P_PolyGenEdges (struct mpoly_s *poly,
+		struct viewplane_s *leftright[2],
+		struct viewplane_s *topbottom)
 {
 	struct drawedge_s *edges[2];
 
 	if (r_polys == r_polys_end)
 		return; //TODO: flush the pipeline and continue on
 
-	if (E_GenEdges(poly->edges, poly->num_edges, cplanes, edges))
+	if (E_GenEdges(poly->edges, poly->num_edges, leftright, topbottom, edges))
 	{
 		struct drawpoly_s *p = r_polys++;
 
@@ -57,7 +60,7 @@ P_PolyGenEdges (struct mpoly_s *poly, struct viewplane_s *cplanes[2])
 
 
 void
-P_ScanPolyEdges (struct drawpoly_s *p)
+P_ScanPolyEdges2 (struct drawpoly_s *p)
 {
 	int u, v;
 	struct drawedge_s *e;
@@ -83,7 +86,7 @@ P_ScanPolyEdges (struct drawpoly_s *p)
 
 
 void
-P_ScanPolyEdges2 (struct drawpoly_s *p)
+P_ScanPolyEdges (struct drawpoly_s *p)
 {
 	struct drawedge_s *left, *right;
 	int v;
@@ -207,8 +210,8 @@ RenderPolySpans (struct drawpoly_s *p)
 	//TODO: texture mapping magic here
 
 	color = ((uintptr_t)p->mpoly >> 2) & 0xff;
-color = 16 * 7;//DEBUG
-color = 251;//DEBUG
+//color = 16 * 7;//DEBUG
+//color = 251;//DEBUG
 
 	for (i = 0, span = p->spans; i < p->num_spans; i++, span++)
 	{
