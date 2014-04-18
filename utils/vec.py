@@ -633,8 +633,8 @@ class Vec2(object):
         return len(self._xy)
 
     def __eq__(self, other):
-        return self._xyz[0] == other[0] and \
-               self._xyz[1] == other[1]
+        return self._xy[0] == other[0] and \
+               self._xy[1] == other[1]
 
     def __ne__(self, other):
         return not self.__eq__(other)
